@@ -1,0 +1,23 @@
+[build-system]
+requires = ["setuptools"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "utill"
+version = "1.0.0"
+authors = [
+  { name="Richard Dharmawan", email="richard.dharmawan@gmail.com" },
+]
+description = "A small example package"
+readme = "README.md"
+requires-python = ">=3.12"
+classifiers = [
+    "Programming Language :: Python :: 3",
+    "Programming Language :: Python :: 3.12",
+    "Programming Language :: Python :: 3 :: Only",
+
+    "License :: OSI Approved :: MIT License",
+
+    "Operating System :: OS Independent",
+]
+dependencies = []
