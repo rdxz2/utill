@@ -23,6 +23,9 @@ classifiers = [
 ]
 dependencies = []
 
+[project.scripts]
+utill = "utill.cmd.utill:main"
+
 [project.optional-dependencies]
 postgresql = [
     "psycopg==3.2.2",
