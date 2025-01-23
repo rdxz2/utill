@@ -1,8 +1,11 @@
 import os
 import shutil
 
+from loguru import logger
 from pydantic_settings import BaseSettings
 from typing import Optional
+
+from .my_input import ask_yes_no
 
 ENV_DIR = os.path.expanduser(os.path.join('~', '.utill'))
 ENV_FILE = os.path.join(ENV_DIR, 'env')
@@ -20,11 +23,27 @@ if not os.path.exists(ENV_DIR):
 
 
 def init_db_file():
+    if os.path.exists(DB_FILENAME):
+        if ask_yes_no(f'DB file exists: {DB_FILENAME}, overwrite?'):
+            shutil.copy(TEMPLATE_DB_FILENAME, DB_FILENAME)
+            logger.warning(f'DB file overwritten! {DB_FILENAME}')
+        else:
+            return
+
     shutil.copy(TEMPLATE_DB_FILENAME, DB_FILENAME)
+    logger.info(f'DB file created: {DB_FILENAME}')
 
 
 def init_mb_file():
+    if os.path.exists(MB_FILENAME):
+        if ask_yes_no(f'MB file exists: {MB_FILENAME}, overwrite?'):
+            shutil.copy(TEMPLATE_MB_FILENAME, MB_FILENAME)
+            logger.warning(f'MB file overwritten! {MB_FILENAME}')
+        else:
+            return
+
     shutil.copy(TEMPLATE_MB_FILENAME, MB_FILENAME)
+    logger.info(f'MB file created: {MB_FILENAME}')
 
 
 class Envs(BaseSettings):
