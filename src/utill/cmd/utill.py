@@ -50,5 +50,25 @@ def main__pg__pg_to_pg(**kwargs): from ._pg import _pg_to_pg; _pg_to_pg(**kwargs
 def main__pg__upload_csv(**kwargs): from ._pg import _upload_csv; _upload_csv(**kwargs)
 
 
+# BQ
+
+
+@main.group('bq', help='BigQuery utility')
+def main__bq(): pass
+@main__bq.command('upload-csv', help='Upload CSV file into BQ table')
+@click.argument('src_filename', type=click.Path())
+@click.argument('dst_table_fqn', type=str)
+@click.option('-c', 'columns', type=(str, str), required=True, multiple=True, help='Columns -> Name DataType')
+@click.option('--partition-col', 'partition_col', type=str, help='Partition column')
+@click.option('--cluster-col', 'cluster_cols', type=str, multiple=True, help='Cluster column(s)')
+@click.option('--project', type=str, help='Billing project')
+def main__bq__upload_csv(**kwargs): from ._bq import _upload_csv; _upload_csv(**kwargs)
+@main__bq.command('download-table', help='Download a BQ table into CSV file')
+@click.argument('src_table_fqn', type=str)
+@click.argument('dst_filename', type=str)
+@click.option('--project', type=str, help='Billing project')
+def main__bq__download_table(**kwargs): from ._bq import _download_table; _download_table(**kwargs)
+
+
 if __name__ == '__main__':
     main()
