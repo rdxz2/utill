@@ -11,39 +11,39 @@ ENV_DIR = os.path.expanduser(os.path.join('~', '.utill'))
 ENV_FILE = os.path.join(ENV_DIR, 'env')
 
 TEMPLATE_DIR = 'templates'
-TEMPLATE_DB_FILENAME = os.path.join(os.path.dirname(__file__), TEMPLATE_DIR, 'db.json')  # Database connections
+TEMPLATE_PG_FILENAME = os.path.join(os.path.dirname(__file__), TEMPLATE_DIR, 'pg.json')  # PostgreSQL connections
 TEMPLATE_MB_FILENAME = os.path.join(os.path.dirname(__file__), TEMPLATE_DIR, 'mb.json')  # Metabase connections
 
-DB_FILENAME = os.path.join(ENV_DIR, os.path.basename(TEMPLATE_DB_FILENAME))
-MB_FILENAME = os.path.join(ENV_DIR, 'mb.json')
+PG_FILENMAE = os.path.join(ENV_DIR, os.path.basename(TEMPLATE_PG_FILENAME))
+MB_FILENAME = os.path.join(ENV_DIR, os.path.basename(TEMPLATE_MB_FILENAME))
 
 # Make sure env dir always exists
 if not os.path.exists(ENV_DIR):
     os.mkdir(ENV_DIR)
 
 
-def init_db_file():
-    if os.path.exists(DB_FILENAME):
-        if ask_yes_no(f'DB file exists: {DB_FILENAME}, overwrite?'):
-            shutil.copy(TEMPLATE_DB_FILENAME, DB_FILENAME)
-            logger.warning(f'DB file overwritten! {DB_FILENAME}')
+def init_pg_file():
+    if os.path.exists(PG_FILENMAE):
+        if ask_yes_no(f'PostgreSQL connection file exists: {PG_FILENMAE}, overwrite?'):
+            shutil.copy(TEMPLATE_PG_FILENAME, PG_FILENMAE)
+            logger.warning(f'PostgreSQL connection file overwritten! {PG_FILENMAE}')
         else:
             return
 
-    shutil.copy(TEMPLATE_DB_FILENAME, DB_FILENAME)
-    logger.info(f'DB file created: {DB_FILENAME}')
+    shutil.copy(TEMPLATE_PG_FILENAME, PG_FILENMAE)
+    logger.info(f'PostgreSQL connection file created: {PG_FILENMAE}')
 
 
 def init_mb_file():
     if os.path.exists(MB_FILENAME):
-        if ask_yes_no(f'MB file exists: {MB_FILENAME}, overwrite?'):
+        if ask_yes_no(f'Metabase connection file exists: {MB_FILENAME}, overwrite?'):
             shutil.copy(TEMPLATE_MB_FILENAME, MB_FILENAME)
-            logger.warning(f'MB file overwritten! {MB_FILENAME}')
+            logger.warning(f'Metabase connection file overwritten! {MB_FILENAME}')
         else:
             return
 
     shutil.copy(TEMPLATE_MB_FILENAME, MB_FILENAME)
-    logger.info(f'MB file created: {MB_FILENAME}')
+    logger.info(f'Metabase connection file created: {MB_FILENAME}')
 
 
 class Envs(BaseSettings):
