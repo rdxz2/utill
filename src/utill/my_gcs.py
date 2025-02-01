@@ -16,6 +16,7 @@ class GCS:
         bucket_name_parts = (bucket_name or envs.GCS_BUCKET).split('/')
         self.change_bucket(bucket_name_parts[0])
         self.base_path = '/'.join(bucket_name_parts[1:]) if len(bucket_name_parts) > 1 else None
+        not self.base_path or logger.debug(f'Base path: {self.base_path}')
 
         logger.debug(f'GCS client open, project: {project or "<application-default>"}')
 
