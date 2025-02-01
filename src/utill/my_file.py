@@ -6,7 +6,7 @@ from loguru import logger
 
 
 def compress(src_file: str, keep: bool = False):
-    src_file = adjust_sep(os.path.expanduser(src_file))
+    src_file = os.path.expanduser(src_file)
     dst_file = src_file + '.gz'
 
     os.remove(dst_file) if os.path.exists(dst_file) else None
@@ -24,7 +24,7 @@ def decompress(src_file: str, keep: bool = False):
     if not src_file.endswith('.gz'):
         raise ValueError('File name not ends with .gz!')
 
-    src_file = adjust_sep(os.path.expanduser(src_file))
+    src_file = os.path.expanduser(src_file)
     dst_file = src_file.removesuffix('.gz')
 
     os.remove(dst_file) if os.path.exists(dst_file) else None
@@ -38,9 +38,9 @@ def decompress(src_file: str, keep: bool = False):
     return dst_file
 
 
-def make_sure_directory_exists(path: str):
-    if not os.path.exists(os.path.dirname(os.path.expanduser(path))):
-        os.makedirs(os.path.dirname(os.path.expanduser(path)))
+def make_sure_directory_exists(dirname: str):
+    if not os.path.exists(os.path.dirname(os.path.expanduser(dirname))):
+        os.makedirs(os.path.dirname(os.path.expanduser(dirname)))
 
 
 def make_sure_path_is_directory(path: str):
@@ -48,17 +48,9 @@ def make_sure_path_is_directory(path: str):
         raise ValueError(f'Please specify directory name ending with \'{os.sep}\' character, example for Linux: \'/home/my_username/Downloads/my_folder/\'!')
 
 
-def make_sure_src_not_equals_dst(src: str, dst: str):
-    if src == dst:
-        raise FileExistsError('Source and destination cannot be the same!')
-
-
-def adjust_sep(path: str) -> str:
-    return path.replace('/', os.sep)
-
-
-def read_last_line(file: str) -> str:
-    with open(file, 'rb') as f:
+def read_last_line(filename: str) -> str:
+    filename = os.path.expanduser(filename)
+    with open(filename, 'rb') as f:
         try:  # Catch OSError in case of a one line file
             f.seek(-2, os.SEEK_END)
             while f.read(1) != b'\n':
