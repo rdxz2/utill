@@ -3,29 +3,28 @@ import math
 import os
 import shutil
 
+from enum import Enum
 from google.cloud import bigquery, storage
 from loguru import logger
 from textwrap import dedent
 
-from .my_csv import read_header, combine, compress
+from .my_const import ByteSize
+from .my_csv import read_header, combine as csv_combine, compress
 from .my_datetime import current_datetime_str
 from .my_env import envs
-from .my_file import make_sure_path_is_directory, adjust_sep
+from .my_file import make_sure_path_is_directory
 from .my_gcs import GCS
 from .my_queue import ThreadingQ
 from .my_string import replace_nonnumeric
 from .my_xlsx import csv_to_xlsx
 
 
-class CsvToBqMode:
-    OVERWRITE = 'OVERWRITE'
-    APPEND = 'APPEND'
-
-    def __init__(self) -> None:
-        pass
+class LoadStrategy(Enum):
+    OVERWRITE = 1
+    APPEND = 2
 
 
-class BqDataType:
+class Dtype:
     INT64 = 'INT64'
     INTEGER = 'INTEGER'
     FLOAT64 = 'FLOAT64'
@@ -53,15 +52,12 @@ class BqDataType:
     ARRAY_BOOL = 'ARRAY<BOOL>'
 
 
-def translate_dict_to_colstring(cols: dict): return ',\n'.join([f'  `{x}` {y}' for x, y in cols.items()])
-
-
 class BQ():
+    def __init__(self, project: str = None):
+        self.project = project or envs.GCP_PROJECT_ID
 
-    def __init__(self, project: str = envs.GCP_PROJECT_ID, disable_print_query: bool = True):
-        self.disable_print_query = disable_print_query
-        self.client = bigquery.Client(project=project)
-        logger.debug(f'BQ client open, project: {project or "<application-default>"}')
+        self.client = bigquery.Client(project=self.project)
+        logger.debug(f'BQ client open, project: {self.project or "<application-default>"}')
 
     def __enter__(self):
         return self
@@ -69,40 +65,61 @@ class BQ():
     def __exit__(self, exc_type, exc_value, exc_tb):
         self.close_client()
 
-    def execute_query(self, query: str, dry_run: bool = False) -> bigquery.QueryJob:
-        multistatement = type(query) == list
-        if multistatement:
-            query = '\n'.join([x if str(x).strip().endswith(';') else x + ';' for x in query if x])  # noqa
+    def execute_query(self, query: str | list[str], dry_run: bool = False) -> bigquery.QueryJob:
+        multi = type(query) == list
+        if multi:
+            query = '\n'.join([x if str(x).strip().endswith(';') else x + ';' for x in query if x])
         else:
             query = query.strip()
 
-        if self.disable_print_query:
-            logger.debug(f'🔎 Query:\n{query}')
+        logger.debug(f'🔎 Query:\n{query}')
         query_job_config = bigquery.QueryJobConfig(dry_run=dry_run)
         query_job = self.client.query(query, job_config=query_job_config)
-        query_job.result()  # wait query execution
+        query_job.result()  # Wait query execution
 
-        if not multistatement:
+        if not multi:
             logger.debug(f'[Job ID] {query_job.job_id}, [Processed] {humanize.naturalsize(query_job.total_bytes_processed)}, [Billed] {humanize.naturalsize(query_job.total_bytes_billed)}, [Affected] {query_job.num_dml_affected_rows or 0} row(s)',)
         else:
             logger.debug(f'[Job ID] {query_job.job_id}')
-            [logger.debug(f'[Script ID] {job.job_id}, [Processed] {humanize.naturalsize(job.total_bytes_processed)}, [Billed] {humanize.naturalsize(job.total_bytes_billed)}, [Affected] {job.num_dml_affected_rows or 0} row(s)',) for job in self.client.list_jobs(parent_job=query_job.job_id)]
+
+            jobs: list[bigquery.QueryJob] = self.client.list_jobs(parent_job=query_job.job_id)
+            [logger.debug(f'[Script ID] {job.job_id}, [Processed] {humanize.naturalsize(job.total_bytes_processed)}, [Billed] {humanize.naturalsize(job.total_bytes_billed)}, [Affected] {job.num_dml_affected_rows or 0} row(s)',) for job in jobs]
 
         return query_job
 
-    def load_data_into(self, table: str, gcs_path: list[str] | str, cols_str: str, partition_by: str = None, cluster_by: str = None, overwrite: bool = False):
+    def create_table(self, bq_table_fqn: str, schema: list[bigquery.SchemaField], partition_col: str, cluster_cols: list[str]):
+        table = bigquery.Table(bq_table_fqn, schema=schema)
+
+        if partition_col:
+            table.time_partitioning = bigquery.TimePartitioning(field=partition_col)
+            table.partitioning_type = 'DAY'
+
+        if cluster_cols:
+            table.clustering_fields = cluster_cols
+
+        bq_table = self.client.create_table(table)
+        logger.info(f'✅ Table created: {bq_table_fqn}')
+        return bq_table
+
+    def drop_table(self, bq_table_fqn: str):
+        self.client.delete_table(bq_table_fqn)
+        logger.info(f'✅ Table dropped: {bq_table_fqn}')
+
+    def load_data_into(self, bq_table_fqn: str, gcs_path: list[str] | str, cols: dict[str, Dtype], partition_col: str = None, cluster_cols: list[str] = None, overwrite: bool = False):
         if type(gcs_path) == str:
             gcs_path = [gcs_path]
-        gcs_path_str = ',\n'.join([f'    \'{x}\'' for x in gcs_path])
+        gcs_path_str = ',\n'.join([f'        \'{x}\'' for x in gcs_path])
 
         load_data_keyword = 'OVERWRITE' if overwrite else 'INTO'
+        cols_str = ',\n'.join([f'    `{x}` {y}' for x, y in cols.items()])
+        cluster_cols_str = ','.join([f'`{x}`' for x in cluster_cols]) if cluster_cols else None
         query = dedent(
             f'''
-            LOAD DATA {load_data_keyword} `{table}` (
+            LOAD DATA {load_data_keyword} `{bq_table_fqn}` (
             {cols_str}
             )
-            {f"PARTITION BY {partition_by}" if partition_by is not None else "-- No partition key"}
-            {f"CLUSTER BY {cluster_by}" if cluster_by is not None else "-- No cluster key"}
+            {f"PARTITION BY `{partition_col}`" if partition_col is not None else "-- No partition column provided"}
+            {f"CLUSTER BY {cluster_cols_str}" if cluster_cols_str is not None else "-- No cluster column provided"}
             FROM FILES(
                 skip_leading_rows=1,
                 allow_quoted_newlines=true,
@@ -114,11 +131,15 @@ class BQ():
             );
             '''
         )
-        return self.execute_query(query, return_df=False)
+
+        logger.debug(f'⌛ Load data into: {bq_table_fqn}')
+        query_job = self.execute_query(query)
+        logger.info(f'✅ Load data into: {bq_table_fqn}')
+        return query_job
 
     def export_data(self, query: str, gcs_path: str, pre_query: str = None):
         if '*' not in gcs_path:
-            raise ValueError('GCS path need to have a single \'*\' wildcard character')  # noqa
+            raise ValueError('GCS path need to have a single \'*\' wildcard character')
 
         query = dedent(
             f'''
@@ -138,80 +159,47 @@ class BQ():
         if pre_query:
             query = [pre_query, query]
 
-        return self.execute_query(query, return_df=False)
+        logger.debug(f'⌛ Export data into: {gcs_path}')
+        query_job = self.execute_query(query)
+        logger.info(f'✅ Exported data into: {gcs_path}')
+        return query_job
 
-    def download_csv(
-        self,
-        query: str,
-        file_path: str,
-        is_combine: bool = True,
-        pre_query: str = None,
-    ):
-        file_path = adjust_sep(os.path.expanduser(file_path))
+    def upload_csv(self, file_path: str, bq_table_fqn: str, cols: dict[str, Dtype], partition_col: str = None, cluster_cols: list[str] = None, load_strategy: LoadStrategy = LoadStrategy.APPEND):
+        # <<----- START: Validation
 
-        make_sure_path_is_directory(file_path)
-
-        if os.path.exists(file_path):
-            shutil.rmtree(file_path)
-
-        os.makedirs(file_path, exist_ok=True)
-
-        current_time = current_datetime_str()
-        gcs_path = f'gs://{envs.GCS_BUCKET}/tmp/{current_time}__unload_query/*.csv.gz'
-
-        logger.info('Export data...')
-        self.export_data(query, gcs_path, pre_query)
-
-        gcs = GCS()
-        logger.info('Downloads from GCS...')
-        file_paths = []
-        for blob in gcs.list(f'tmp/{current_time}__unload_query/'):
-            file_path_part = os.path.join(file_path, blob.name.split('/')[-1])
-            gcs.download(blob, file_path_part)
-            file_paths.append(file_path_part)
-
-        if is_combine:
-            logger.info('Combine downloaded csv...')
-            file_path_final = f'{file_path[:-1]}.csv'
-            combine(file_paths, file_path_final)
-            shutil.rmtree(file_path)
-
-    def upload_csv(
-        self,
-        file_path: str,
-        table: str,
-        cols: dict,
-        partition_by: str = None,
-        cluster_by: str = None,
-        mode: CsvToBqMode = CsvToBqMode.APPEND,
-    ):
-        file_path = adjust_sep(file_path)
+        if load_strategy not in LoadStrategy:
+            raise ValueError('Invalid load strategy')
 
         if not file_path.endswith('.csv'):
             raise ValueError('Please provide file path with .csv extension!')
 
-        if partition_by is not None:
-            if partition_by not in cols.keys():
-                raise ValueError(f'Partition \'{partition_by}\' not exists in columns!')
-        if cluster_by is not None:
-            if cluster_by not in cols.keys():
-                raise ValueError(f'Cluster \'{cluster_by}\' not exists in columns!')
+        if partition_col is not None:
+            if partition_col not in cols.keys():
+                raise ValueError(f'Partition \'{partition_col}\' not exists in columns!')
+        if cluster_cols is not None:
+            if cluster_cols not in cols.keys():
+                raise ValueError(f'Cluster \'{cluster_cols}\' not exists in columns!')
 
         # Build list of columns with its datatypes
         csv_cols = set(read_header(file_path))
         excessive_cols = set(cols.keys()) - set(csv_cols)
         if excessive_cols:
-            raise ValueError(f'{len(excessive_cols)} columns not exists in CSV file: {", ".join(excessive_cols)}')  # noqa
+            raise ValueError(f'{len(excessive_cols)} columns not exists in CSV file: {", ".join(excessive_cols)}')
         nonexistent_cols = set(csv_cols) - set(cols.keys())
         if nonexistent_cols:
-            raise ValueError(f'{len(nonexistent_cols)} columns from CSV are missing: {", ".join(nonexistent_cols)}')  # noqa
-        cols_str = translate_dict_to_colstring(cols)
+            raise ValueError(f'{len(nonexistent_cols)} columns from CSV are missing: {", ".join(nonexistent_cols)}')
 
-        gcs = GCS(envs.GCS_BUCKET.split('/')[0])
-        tmp_dir = f'tmp/{current_datetime_str()}__upload'
+        # END: Validation ----->>
 
+        # <<----- START: Upload to GCS
+
+        gcs = GCS(self.project)
+        tmp_dir = f'tmp/upload__{current_datetime_str()}'
+
+        # This will compress while splitting the compressed file to a certain bytes size because of GCS 4GB file limitation
+        # A single file can produce more than one compressed file in GCS
         def producer(src_file: str):
-            for dst_file in compress(src_file, keep=True):
+            for dst_file in compress(src_file, keep=True, max_size_bytes=ByteSize.GB * 3):
                 yield (dst_file, )
 
         def consumer(dst_file: str):
@@ -224,49 +212,72 @@ class BQ():
         _, blobs = ThreadingQ().add_producer(producer, file_path).add_consumer(consumer).execute()
 
         try:
-            logger.debug('Load data into...')
-            if mode == CsvToBqMode.OVERWRITE:
-                self.load_data_into(table, [f'gs://{blob.bucket.name}/{blob.name}' for blob in blobs], cols_str, overwrite=True, partition_by=partition_by, cluster_by=cluster_by)
-            elif mode == CsvToBqMode.APPEND:
-                self.load_data_into(table, [f'gs://{blob.bucket.name}/{blob.name}' for blob in blobs], cols_str, partition_by=partition_by, cluster_by=cluster_by)
-            else:
-                return ValueError(f'Data insertion mode not recognized: {mode}')
+            gcs_filename_fqns = [f'gs://{blob.bucket.name}/{blob.name}' for blob in blobs]
+            match load_strategy:
+                case LoadStrategy.OVERWRITE:
+                    self.load_data_into(bq_table_fqn, gcs_filename_fqns, cols, partition_col=partition_col, cluster_cols=cluster_cols, overwrite=True)
+                case LoadStrategy.APPEND:
+                    self.load_data_into(bq_table_fqn, gcs_filename_fqns, cols, partition_col=partition_col, cluster_cols=cluster_cols)
+                case _:
+                    return ValueError(f'Load strategy not recognized: {load_strategy}')
         except Exception as e:
             raise e
         finally:
             [GCS.remove_blob(blob) for blob in blobs]
 
-        gcs.close_client()
+        # END: Load to BQ ----->>
 
-    def bq_to_xlsx(
-        self,
-        table_name: str,
-        file_path: str,
-        limit: int = 950000,
-    ):
+    def download_csv(self, query: str, dirname: str, combine: bool = True, pre_query: str = None):
+        make_sure_path_is_directory(dirname)
+
+        if os.path.exists(dirname):
+            shutil.rmtree(dirname)
+
+        os.makedirs(dirname, exist_ok=True)
+
+        current_time = current_datetime_str()
+        gcs_path = f'gs://{envs.GCS_BUCKET}/tmp/unload__{current_time}/*.csv.gz'
+
+        self.export_data(query, gcs_path, pre_query)
+
+        gcs = GCS(self.project)
+        logger.info('Downloads from GCS...')
+        file_paths = []
+        for blob in gcs.list(f'tmp/unload__{current_time}/'):
+            file_path_part = os.path.join(dirname, blob.name.split('/')[-1])
+            gcs.download(blob, file_path_part)
+            file_paths.append(file_path_part)
+
+        if combine:
+            logger.info('Combine downloaded csv...')
+            final_filename = f'{dirname[:-1]}.csv'
+            csv_combine(file_paths, final_filename)
+            shutil.rmtree(dirname)
+
+        return final_filename
+
+    def download_xlsx(self, table_name: str, file_path: str, limit: int = 950000):
         if file_path.endswith(os.sep):
             raise ValueError(f'Please provide file path NOT ending with \'{os.sep}\' character')
 
         table_name_tmp = f'{table_name}_'
-        self.execute_query(f'CREATE TABLE `{table_name_tmp}` AS SELECT *, ROW_NUMBER() OVER() AS _rn FROM `{table_name}`', return_df=False)
+        self.execute_query(f'CREATE TABLE `{table_name_tmp}` AS SELECT *, ROW_NUMBER() OVER() AS _rn FROM `{table_name}`')
 
         try:
-            cnt = self.execute_query(f'SELECT COUNT(1) AS cnt FROM `{table_name}`')['cnt'].values[0]
+            cnt = list(self.execute_query(f'SELECT COUNT(1) AS cnt FROM `{table_name}`').result())[0][0]
             parts = math.ceil(cnt / limit)
             logger.debug(f'Total part: {cnt} / {limit} = {parts}')
             for part in range(parts):
-                logger.debug(f'Download part {part + 1}...')
+                logger.debug(f'Downloading part {part + 1}...')
                 file_path_tmp = f'{file_path}_part{part + 1}'
                 file_path_tmp_csv = f'{file_path_tmp}.csv'
                 self.download_csv(f'SELECT * EXCEPT(_rn) FROM `{table_name_tmp}` WHERE _rn BETWEEN {(part * limit) + 1} AND {(part + 1) * limit}', f'{file_path_tmp}{os.sep}')
-                logger.debug('CSV into XLXS...')
-                # df_to_xlsx([pd.read_csv(file_path_tmp_csv)], [sheet_name], f'{file_path_tmp}.xlsx')
                 csv_to_xlsx(file_path_tmp_csv, f'{file_path_tmp}.xlsx')
                 os.remove(file_path_tmp_csv)
         except Exception as e:
             raise e
         finally:
-            self.execute_query(f'DROP TABLE IF EXISTS `{table_name_tmp}`', return_df=False)
+            self.execute_query(f'DROP TABLE IF EXISTS `{table_name_tmp}`')
 
     def copy_table(self, src_table_id: str, dst_table_id: str, drop: bool = False):
         # Create or replace
