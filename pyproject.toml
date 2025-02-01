@@ -19,12 +19,24 @@ classifiers = [
   "License :: OSI Approved :: MIT License",
   "Operating System :: OS Independent",
 ]
-dependencies = []
+dependencies = [
+  "click==8.1.8",
+  "duckdb==1.1.3",
+  "humanize==4.11.0",
+  "loguru==0.7.3",
+  "pydantic-settings==2.7.1",
+  "pydantic==2.10.6",
+  "requests==2.32.3",
+]
 
 [project.scripts]
 utill = "utill.cmd.utill:main"
 
 [project.optional-dependencies]
+google-cloud = [
+  "google-cloud-bigquery==3.29.0",
+  "google-cloud-storage==3.0.0",
+]
 postgresql = [
   "psycopg==3.2.2",
 ]
