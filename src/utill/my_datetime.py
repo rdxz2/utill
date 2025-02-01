@@ -1,4 +1,10 @@
 from datetime import date, datetime, timedelta
+from enum import Enum
+
+
+class Level(Enum):
+    DAY = 1
+    MONTH = 2
 
 
 def get_current_date_str(use_separator: bool = False) -> str:
@@ -18,7 +24,7 @@ def get_month_first_and_last_day(string: str) -> tuple:
     return (dt, (dt + timedelta(days=32)).replace(day=1) - timedelta(days=1))
 
 
-def generate_dates(start_date: date | str, end_date: date | str, level: str, is_output_strings: bool = False):
+def generate_dates(start_date: date | str, end_date: date | str, level: Level, is_output_strings: bool = False):
     # Auto convert strings
     if type(start_date) == str:
         start_date = datetime.strptime(start_date, '%Y-%m-%d').date()
@@ -36,19 +42,20 @@ def generate_dates(start_date: date | str, end_date: date | str, level: str, is_
 
     dates: list[date] = []
 
-    if level == 'day':
-        while end_date >= start_date:
-            dates.append(end_date)
-            end_date = end_date - timedelta(days=1)
-    elif level == 'month':
-        start_date = start_date.replace(day=1)
-        end_date = end_date.replace(day=1)
-        while end_date >= start_date:
+    match level:
+        case Level.DAY:
+            while end_date >= start_date:
+                dates.append(end_date)
+                end_date = end_date - timedelta(days=1)
+        case Level.MONTH:
+            start_date = start_date.replace(day=1)
             end_date = end_date.replace(day=1)
-            dates.append(end_date)
-            end_date = end_date - timedelta(days=1)
-    else:
-        raise ValueError(f'level \'{level}\' not recognized. available levels are: \'day\', \'month\'')
+            while end_date >= start_date:
+                end_date = end_date.replace(day=1)
+                dates.append(end_date)
+                end_date = end_date - timedelta(days=1)
+        case _:
+            raise ValueError(f'level \'{level}\' not recognized. available levels are: \'day\', \'month\'')
 
     if is_output_strings:
         return sorted([date.strftime('%Y-%m-%d') for date in dates])
