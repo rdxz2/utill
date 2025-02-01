@@ -7,7 +7,7 @@ import psycopg.rows
 from loguru import logger
 from textwrap import dedent
 
-from .my_env import DB_FILENAME
+from .my_env import PG_FILENMAE
 from .my_string import generate_random_string
 from .my_tunnel import establish_tunnel
 
@@ -16,7 +16,7 @@ class PG:
     def __init__(
         self,
         connection=None,
-        config_source: str | dict = DB_FILENAME,
+        config_source: str | dict = PG_FILENMAE,
         autocommit: bool = True,
     ) -> None:
         if type(config_source) == str:
@@ -55,7 +55,7 @@ class PG:
         self.conn.autocommit = autocommit
 
     def execute_query(self, query: str, *params):
-        # make sure connection alive
+        # Make sure connection alive
         if self.conn.closed:
             self.establish_connection(self.conn.autocommit)
 
@@ -91,7 +91,7 @@ class PG:
             os.remove(tmp_filename) if os.path.exists(tmp_filename) else None
 
     def check_table_existence(self, table_name: str) -> bool:
-        if not self.execute_query(f'''SELECT count(1) AS cnt FROM information_schema.tables WHERE table_schema || '.' || table_name = '{table_name}';''').fetchone()['cnt']:
+        if not self.execute_query('''SELECT count(1) AS "cnt" FROM "information_schema"."tables" WHERE "table_schema" || '.' || "table_name" = '%s';''', table_name).fetchone()['cnt']:
             raise Exception(f'Target table \'{table_name}\' not created, please create it first!')
 
     def upload_tuples(self, cols: list[str], tuples: list[tuple], table_name: str) -> None:
