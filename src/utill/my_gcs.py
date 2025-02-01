@@ -9,11 +9,11 @@ from .my_env import envs
 
 class GCS:
 
-    def __init__(self, project: str = None, bucket_name: str = envs.GCS_BUCKET):
-        project = project if project is not None else envs.GCP_PROJECT_ID
-        self.client = storage.Client(project=project)
+    def __init__(self, project: str = None, bucket_name: str = None):
+        self.project = project if project is not None else envs.GCP_PROJECT_ID
+        self.client = storage.Client(project=self.project)
 
-        bucket_name_parts = bucket_name.split('/')
+        bucket_name_parts = (bucket_name or envs.GCS_BUCKET).split('/')
         self.change_bucket(bucket_name_parts[0])
         self.base_path = '/'.join(bucket_name_parts[1:]) if len(bucket_name_parts) > 1 else None
 
