@@ -43,9 +43,9 @@ def main__pg(): pass
 @click.argument('dst_table', type=str)
 @click.option('-c', '--columns', type=str, default='*', help='Columns to copy')
 def main__pg__pg_to_pg(**kwargs): from ._pg import _pg_to_pg; _pg_to_pg(**kwargs)
-@main__pg.command('upload-csv', help='Upload local CSV')
+@main__pg.command('upload-csv', help='Upload CSV file into PG table')
 @click.argument('profile', type=str)
-@click.argument('src_csv', type=click.Path())
+@click.argument('src_filename', type=click.Path())
 @click.argument('dst_table', type=str)
 def main__pg__upload_csv(**kwargs): from ._pg import _upload_csv; _upload_csv(**kwargs)
 

@@ -8,8 +8,8 @@ def _pg_to_pg(src_profile: str, src_table: str, dst_profile: str, dst_table: str
     pg_src.pg_to_pg(pg_dst, src_table, dst_table, columns)
 
 
-def _upload_csv(profile: str, src_csv: str, dst_table: str):
+def _upload_csv(profile: str, src_filename: str, dst_table: str):
     from ..my_pg import PG
 
     pg = PG(profile)
-    pg.upload_csv(src_csv, dst_table)
+    pg.upload_csv(src_filename, dst_table)
