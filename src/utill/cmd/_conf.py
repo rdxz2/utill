@@ -1,8 +1,22 @@
-def _init():
-    from ..my_env import init_db_file, init_mb_file
+def _init(mode: str):
+    from loguru import logger
 
-    init_db_file()
-    init_mb_file()
+    from ..my_env import envs, init_pg_file, init_mb_file
+
+    match mode:
+        case 'google-cloud':
+            setattr(envs, 'GCP_PROJECT_ID', input('GCP_PROJECT_ID: '))
+            setattr(envs, 'GCS_BUCKET', input('GCS_BUCKET: '))
+            envs.write()
+            logger.info('Google cloud configuration initialized')
+        case 'postgresql':
+            init_pg_file()
+            logger.info('PostgreSQL connection file initialized')
+        case 'metabase':
+            init_mb_file()
+            logger.info('Metabase connection file initialized')
+        case _:
+            logger.warning(f'Mode \'{mode}\' not recognized')
 
 
 def _list():
