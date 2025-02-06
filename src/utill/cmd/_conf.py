@@ -19,13 +19,38 @@ def _init(mode: str):
             logger.warning(f'Mode \'{mode}\' not recognized')
 
 
-def _list():
+def _list(module: str = None):
+    import json
+    import os
+
     from loguru import logger
 
-    from ..my_env import envs
+    from ..my_env import envs, PG_FILENAME, MB_FILENAME
+    from ..my_string import mask
 
-    for env in envs.model_fields:
-        logger.info(f'{env} = {getattr(envs, env)}')
+    match module:
+        case 'postgresql':
+            if not os.path.exists(PG_FILENAME):
+                logger.error('PostgreSQL configuraiton not exists')
+                return
+
+            config: dict = json.loads(open(PG_FILENAME, 'r').read())
+            for k, v in config.items():
+                print(k)
+                for k2, v2 in v.items():
+                    print(f'\t{k2} = {mask(str(v2)) if k2 in ("password", ) else v2}')
+
+        case 'metabase':
+            if not os.path.exists(MB_FILENAME):
+                logger.error('Metabase configuration not exists')
+                return
+
+            config: dict = json.loads(open(MB_FILENAME, 'r').read())
+            for k, v in config.items():
+                print(f'{k} = {mask(str(v)) if k in ("api_key", ) else v}')
+        case _:
+            for env in envs.model_fields:
+                print(f'{env} = {getattr(envs, env)}')
 
 
 def _set(vars: list[tuple[str, str]]):
