@@ -14,7 +14,7 @@ TEMPLATE_DIR = 'templates'
 TEMPLATE_PG_FILENAME = os.path.join(os.path.dirname(__file__), TEMPLATE_DIR, 'pg.json')  # PostgreSQL connections
 TEMPLATE_MB_FILENAME = os.path.join(os.path.dirname(__file__), TEMPLATE_DIR, 'mb.json')  # Metabase connections
 
-PG_FILENMAE = os.path.join(ENV_DIR, os.path.basename(TEMPLATE_PG_FILENAME))
+PG_FILENAME = os.path.join(ENV_DIR, os.path.basename(TEMPLATE_PG_FILENAME))
 MB_FILENAME = os.path.join(ENV_DIR, os.path.basename(TEMPLATE_MB_FILENAME))
 
 # Make sure env dir always exists
@@ -23,15 +23,15 @@ if not os.path.exists(ENV_DIR):
 
 
 def init_pg_file():
-    if os.path.exists(PG_FILENMAE):
-        if ask_yes_no(f'PostgreSQL connection file exists: {PG_FILENMAE}, overwrite?'):
-            shutil.copy(TEMPLATE_PG_FILENAME, PG_FILENMAE)
-            logger.warning(f'PostgreSQL connection file overwritten! {PG_FILENMAE}')
+    if os.path.exists(PG_FILENAME):
+        if ask_yes_no(f'PostgreSQL connection file exists: {PG_FILENAME}, overwrite?'):
+            shutil.copy(TEMPLATE_PG_FILENAME, PG_FILENAME)
+            logger.warning(f'PostgreSQL connection file overwritten! {PG_FILENAME}')
         else:
             return
 
-    shutil.copy(TEMPLATE_PG_FILENAME, PG_FILENMAE)
-    logger.info(f'PostgreSQL connection file created: {PG_FILENMAE}')
+    shutil.copy(TEMPLATE_PG_FILENAME, PG_FILENAME)
+    logger.info(f'PostgreSQL connection file created: {PG_FILENAME}')
 
 
 def init_mb_file():

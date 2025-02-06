@@ -7,7 +7,7 @@ import psycopg.rows
 from loguru import logger
 from textwrap import dedent
 
-from .my_env import PG_FILENMAE
+from .my_env import PG_FILENAME
 from .my_string import generate_random_string
 from .my_tunnel import establish_tunnel
 
@@ -16,7 +16,7 @@ class PG:
     def __init__(
         self,
         connection=None,
-        config_source: str | dict = PG_FILENMAE,
+        config_source: str | dict = PG_FILENAME,
         autocommit: bool = True,
     ) -> None:
         if type(config_source) == str:
