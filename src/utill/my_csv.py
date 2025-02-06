@@ -16,9 +16,9 @@ def read_header(filename: str):
         return next(csvreader)
 
 
-def append(filename: str, rows: list[tuple]):
+def write(filename: str, rows: list[tuple], append: bool = False):
     filename = os.path.expanduser(filename)
-    with open(filename, 'a') as f:
+    with open(filename, 'a' if append else 'w') as f:
         csvwriter = csv.writer(f)
         csvwriter.writerows(rows)
 
