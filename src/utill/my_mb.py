@@ -57,7 +57,7 @@ class MB:
         elif method == HttpMethod.DELETE:
             response = requests.delete(url, headers=headers, json=json_data)
         else:
-            raise ValueError('HTTP method not recognized!')
+            raise ValueError(f'HTTP method {method} not recognized!')
 
         if not (200 <= response.status_code < 300):
             raise Exception(f'HTTP error {response.status_code}: {response.text}')
@@ -169,7 +169,7 @@ class MB:
             'user_id': user_id,
         })
 
-        # update locally
+        # Update locally
         self.dict__user_id__user[user_id]['group_ids'].append(group_id)
         self.dict__user_email__user[self.dict__user_id__user[user_id]['email']]['group_ids'].append(group_id)
 
@@ -190,21 +190,21 @@ class MB:
             self.grant_user_id_to_group_by_id(target_user['id'], group_id)
 
     def grant_group_id_to_collection_by_id(self, group_id: int, collection_id: int):
-        # get latest revision
+        # Get latest revision
         graph = self.send_request(HttpMethod.GET, 'api/collection/graph').json()
         logger.debug(f'Latest revision: {graph["revision"]}')
 
         group_id_str = str(group_id)
         collection_id_str = str(collection_id)
 
-        # test group existence
+        # Test group existence
         try:
             self.dict__group_id__group[group_id]
         except KeyError as e:
             logger.error(f'Group ID {group_id} not exists')
             raise e
 
-        # test collection existence
+        # Test collection existence
         try:
             self.dict__collection_id__collection[collection_id]
         except KeyError as e:
@@ -228,94 +228,94 @@ class MB:
         logger.info(f'✅ Grant group \'{self.dict__group_id__group[group_id]["name"]}\' to collection \'{self.dict__collection_id__collection[collection_id]["name"]}\'')
 
     def grant_user_email_to_dashboard_by_url(self, email: str, dashboard_url: str):
-        # get user
+        # Get user
         user = self.dict__user_email__user[email]
         user_group_ids = _translate_user_group_ids(user)
 
-        # get dashboard
+        # Get dashboard
         dashboard_id = int(dashboard_url.split(f'{self.base_url}/dashboard/')[1].split('-')[0])
         dashboard = self.dict__dashboard_id__dashboard[dashboard_id]
 
-        # get collection
+        # Get collection
         collection_id = dashboard['collection_id']
         collection = self.dict__collection_id__collection[collection_id]
 
-        # get collection's group
+        # Get collection's group
         try:
             group = self.dict__group_name__group[collection['group_name']]
         except KeyError:
-            # create group if not exists
+            # Create group if not exists
             self.create_group(collection['group_name'])
             group = self.dict__group_name__group[collection['group_name']]
 
-            # grant group to collection
+            # Grant group to collection
             self.grant_group_id_to_collection_by_id(group['id'], collection_id)
 
-        # skip if user already in group
+        # Skip if user already in group
         if group['id'] in user_group_ids:
             logger.warning(f'{dashboard_url}: User {email} already in group {group["name"]}')
             return
 
-        # grant
+        # Grant
         self.grant_user_id_to_group_by_id(user['id'], group['id'])
 
     def grant_user_email_to_collection_by_url(self, email: str, collection_url: str):
-        # get user
+        # Get user
         user = self.dict__user_email__user[email]
         user_group_ids = _translate_user_group_ids(user)
 
-        # get collection
+        # Get collection
         collection_id = int(collection_url.split(f'{self.base_url}/collection/')[1].split('-')[0])
         collection = self.dict__collection_id__collection[collection_id]
 
-        # get collection's group
+        # Get collection's group
         try:
             group = self.dict__group_name__group[collection['group_name']]
         except KeyError:
-            # create group if not exists
+            # Create group if not exists
             self.create_group(collection['group_name'])
             group = self.dict__group_name__group[collection['group_name']]
 
-            # grant group to collection
+            # Grant group to collection
             self.grant_group_id_to_collection_by_id(group['id'], collection_id)
 
-        # skip if user already in group
+        # Skip if user already in group
         if group['id'] in user_group_ids:
             logger.warning(f'{collection_url}: User {email} already in group {group["name"]}')
             return
 
-        # grant
+        # Grant
         self.grant_user_id_to_group_by_id(user['id'], group['id'])
 
     def grant_user_email_to_question_by_url(self, email: str, question_url: str):
-        # get user
+        # Get user
         user = self.dict__user_email__user[email]
         user_group_ids = _translate_user_group_ids(user)
 
-        # get question
+        # Get question
         question = self.dict__question_url__question[question_url]
 
-        # get question's collection
+        # Get question's collection
         collection_id = question['collection_id']
         collection = self.dict__collection_id__collection[question['collection_id']]
 
-        # get collection's group
+        # Get collection's group
         try:
             group = self.dict__group_name__group[collection['group_name']]
         except KeyError:
-            # create group if not exists
+            # Create group if not exists
             self.create_group(collection['group_name'])
             group = self.dict__group_name__group[collection['group_name']]
 
-            # grant group to collection
+            # Grant group to collection
             self.grant_group_id_to_collection_by_id(group['id'], collection_id)
 
-        # skip if user already in group
+        # Skip if user already in group
         if group['id'] in user_group_ids:
             logger.warning(f'{question_url}: User {email} already in group {group["name"]}')
             return
 
-        # grant
+        # Grant
         self.grant_user_id_to_group_by_id(user['id'], group['id'])
 
     # END: Permission ----->>
@@ -325,7 +325,7 @@ class MB:
     def _fetch_collection_by_id(self, collection_id: int) -> dict:
         if not self._is_collection_initialized:
             logger.debug('🕐 Initialize collection data')
-            response_json = [x for x in self.send_request(HttpMethod.GET, 'api/collection').json()[1:]]  # exclude root collection
+            response_json = [x for x in self.send_request(HttpMethod.GET, 'api/collection').json()[1:]]  # Exclude root collection
             self.dict__collection_id__collection_name = {x['id']: x['name'] for x in response_json}
             self.dict__collection_id__collection = {x['id']: {
                 **x,
