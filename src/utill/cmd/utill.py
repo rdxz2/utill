@@ -71,5 +71,14 @@ def main__bq__upload_csv(**kwargs): from ._bq import _upload_csv; _upload_csv(**
 def main__bq__download_table(**kwargs): from ._bq import _download_table; _download_table(**kwargs)
 
 
+# Utility
+
+
+@main.command('unique', help='Get unique values')
+@click.argument('strings', nargs=-1)
+@click.option('-s', 'sort', type=bool, is_flag=True, help='Sort the output')
+def main__unique(**kwargs): from ._main import _unique; _unique(**kwargs)
+
+
 if __name__ == '__main__':
     main()
