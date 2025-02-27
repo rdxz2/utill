@@ -43,9 +43,9 @@ class PG:
     def __exit__(self, exc_type, exc_value, exc_tb):
         self.close()
 
-    def establish_connection(self, autocommit: bool):
+    def establish_connection(self, autocommit: bool, row_factory: psycopg.rows = psycopg.rows.dict_row):
         self.conn = psycopg.connect(f'postgresql://{self.db_username}:{self.db_password}@{self.db_host}:{self.db_port}/{self.db_name}', autocommit=autocommit)
-        self.cursor = self.conn.cursor(row_factory=psycopg.rows.dict_row)
+        self.cursor = self.conn.cursor(row_factory=row_factory)
         logger.debug(f'PG client open: {self.db_username}@{self.db_host}:{self.db_port}/{self.db_name}, autocommit={self.conn.autocommit}')
 
     def change_autocommit(self, autocommit: bool):
