@@ -164,13 +164,13 @@ class BQ():
         logger.info(f'✅ Exported data into: {gcs_path}')
         return query_job
 
-    def upload_csv(self, file_path: str, bq_table_fqn: str, cols: dict[str, Dtype], partition_col: str = None, cluster_cols: list[str] = None, load_strategy: LoadStrategy = LoadStrategy.APPEND):
+    def upload_csv(self, src_filename: str, bq_table_fqn: str, cols: dict[str, Dtype], partition_col: str = None, cluster_cols: list[str] = None, load_strategy: LoadStrategy = LoadStrategy.APPEND):
         # <<----- START: Validation
 
         if load_strategy not in LoadStrategy:
             raise ValueError('Invalid load strategy')
 
-        if not file_path.endswith('.csv'):
+        if not src_filename.endswith('.csv'):
             raise ValueError('Please provide file path with .csv extension!')
 
         if partition_col is not None:
@@ -181,7 +181,7 @@ class BQ():
                 raise ValueError(f'Cluster \'{cluster_cols}\' not exists in columns!')
 
         # Build list of columns with its datatypes
-        csv_cols = set(read_header(file_path))
+        csv_cols = set(read_header(src_filename))
         excessive_cols = set(cols.keys()) - set(csv_cols)
         if excessive_cols:
             raise ValueError(f'{len(excessive_cols)} columns not exists in CSV file: {", ".join(excessive_cols)}')
@@ -209,7 +209,11 @@ class BQ():
             return blob
 
         blobs: list[storage.Blob]
-        _, blobs = ThreadingQ().add_producer(producer, file_path).add_consumer(consumer).execute()
+        _, blobs = ThreadingQ().add_producer(producer, src_filename).add_consumer(consumer).execute()
+
+        # END: Upload to GCS ----->>
+
+        # <<----- START: Load to BQ
 
         try:
             gcs_filename_fqns = [f'gs://{blob.bucket.name}/{blob.name}' for blob in blobs]
@@ -227,51 +231,60 @@ class BQ():
 
         # END: Load to BQ ----->>
 
-    def download_csv(self, query: str, dirname: str, combine: bool = True, pre_query: str = None):
+    def download_csv(self, query: str, dst_filename: str, combine: bool = True, pre_query: str = None):
+        if not dst_filename.endswith('.csv'):
+            raise ValueError('Destination filename must ends with .csv!')
+
+        dirname = os.path.dirname(dst_filename)
         make_sure_path_is_directory(dirname)
 
+        # Remove & recreate existing folder
         if os.path.exists(dirname):
             shutil.rmtree(dirname)
-
         os.makedirs(dirname, exist_ok=True)
 
+        # Export data into GCS
         current_time = current_datetime_str()
         gcs_path = f'gs://{envs.GCS_BUCKET}/tmp/unload__{current_time}/*.csv.gz'
-
         self.export_data(query, gcs_path, pre_query)
 
+        # Download into local machine
         gcs = GCS(self.project)
         logger.info('Downloads from GCS...')
-        file_paths = []
+        downloaded_filenames = []
         for blob in gcs.list(f'tmp/unload__{current_time}/'):
             file_path_part = os.path.join(dirname, blob.name.split('/')[-1])
             gcs.download(blob, file_path_part)
-            file_paths.append(file_path_part)
+            downloaded_filenames.append(file_path_part)
 
+        # Combine the file and clean up the file chunks
         if combine:
             logger.info('Combine downloaded csv...')
-            final_filename = f'{dirname[:-1]}.csv'
-            csv_combine(file_paths, final_filename)
+            csv_combine(downloaded_filenames, dst_filename)
             shutil.rmtree(dirname)
 
-        return final_filename
+        return dst_filename
 
-    def download_xlsx(self, table_name: str, file_path: str, limit: int = 950000):
-        if file_path.endswith(os.sep):
-            raise ValueError(f'Please provide file path NOT ending with \'{os.sep}\' character')
+    def download_xlsx(self, src_table_fqn: str, dst_filename: str, xlsx_row_limit: int = 950000):
+        if not dst_filename.endswith('.xlsx'):
+            raise ValueError('Destination filename must ends with .xlsx!')
 
-        table_name_tmp = f'{table_name}_'
-        self.execute_query(f'CREATE TABLE `{table_name_tmp}` AS SELECT *, ROW_NUMBER() OVER() AS _rn FROM `{table_name}`')
+        # Create a temporary table acting as excel file splitting
+        table_name_tmp = f'{src_table_fqn}_'
+        self.execute_query(f'CREATE TABLE `{table_name_tmp}` AS SELECT *, ROW_NUMBER() OVER() AS _rn FROM `{src_table_fqn}`')
 
         try:
-            cnt = list(self.execute_query(f'SELECT COUNT(1) AS cnt FROM `{table_name}`').result())[0][0]
-            parts = math.ceil(cnt / limit)
-            logger.debug(f'Total part: {cnt} / {limit} = {parts}')
+            # Calculate the number of excel file parts based on row limit
+            cnt = list(self.execute_query(f'SELECT COUNT(1) AS cnt FROM `{src_table_fqn}`').result())[0][0]
+            parts = math.ceil(cnt / xlsx_row_limit)
+            logger.debug(f'Total part: {cnt} / {xlsx_row_limit} = {parts}')
+
+            # Download per parts
             for part in range(parts):
                 logger.debug(f'Downloading part {part + 1}...')
-                file_path_tmp = f'{file_path}_part{part + 1}'
+                file_path_tmp = f'{dst_filename}_part{part + 1}'
                 file_path_tmp_csv = f'{file_path_tmp}.csv'
-                self.download_csv(f'SELECT * EXCEPT(_rn) FROM `{table_name_tmp}` WHERE _rn BETWEEN {(part * limit) + 1} AND {(part + 1) * limit}', f'{file_path_tmp}{os.sep}')
+                self.download_csv(f'SELECT * EXCEPT(_rn) FROM `{table_name_tmp}` WHERE _rn BETWEEN {(part * xlsx_row_limit) + 1} AND {(part + 1) * xlsx_row_limit}', f'{file_path_tmp}{os.sep}')
                 csv_to_xlsx(file_path_tmp_csv, f'{file_path_tmp}.xlsx')
                 os.remove(file_path_tmp_csv)
         except Exception as e:
