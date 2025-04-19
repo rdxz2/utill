@@ -11,10 +11,8 @@ def _init(mode: str):
             logger.info('Google cloud configuration initialized')
         case 'postgresql':
             init_pg_file()
-            logger.info('PostgreSQL connection file initialized')
         case 'metabase':
             init_mb_file()
-            logger.info('Metabase connection file initialized')
         case _:
             logger.warning(f'Mode \'{mode}\' not recognized')
 
