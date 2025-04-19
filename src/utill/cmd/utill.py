@@ -21,17 +21,6 @@ def main__conf__list(**kwargs): from ._conf import _list; _list(**kwargs)
 def main__conf__set(**kwargs): from ._conf import _set; _set(**kwargs)
 
 
-# Gen
-
-
-@main.group('gen', help='Generation utility')
-def main__gen(): pass
-@main__gen.command('random-string', help='Generate random string')
-@click.option('-l', 'length', type=int, default=32, help='Length of the random string')
-@click.option('-a', 'alphanum', is_flag=True, default=False, help='Use alphanumeric only (a-Z, 0-9)')
-def gen_random_string(**kwargs): from ._gen import _random_string; _random_string(**kwargs)
-
-
 # PG
 
 
@@ -71,7 +60,24 @@ def main__bq__upload_csv(**kwargs): from ._bq import _upload_csv; _upload_csv(**
 def main__bq__download_table(**kwargs): from ._bq import _download_table; _download_table(**kwargs)
 
 
-# Utility
+# Encyrption
+
+
+@main.group('enc', help='Encryption utility')
+def main__enc(): pass
+@main__enc.command('encrypt', help='Encrypt a string / file')
+@click.argument('src', type=str)
+@click.option('-p', 'password', type=str, required=True, help='The password')
+def main__enc__encrypt(**kwargs): from ._enc import _encrypt; _encrypt(**kwargs)
+
+
+# Other utilities
+
+
+@main.command('random', help='Generate random string')
+@click.option('-l', 'length', type=int, default=32, help='Length of the random string')
+@click.option('-a', 'alphanum', is_flag=True, default=False, help='Use alphanumeric only (a-Z, 0-9)')
+def main__random(**kwargs): from ._main import _random; _random(**kwargs)
 
 
 @main.command('unique', help='Get unique values')
