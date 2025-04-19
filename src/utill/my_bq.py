@@ -18,6 +18,12 @@ from .my_queue import ThreadingQ
 from .my_string import replace_nonnumeric
 from .my_xlsx import csv_to_xlsx
 
+MAP__PYTHON_DTYPE__BQ_DTYPE = {
+    int: 'INTEGER',
+    str: 'STRING',
+    float: 'STRING',
+}
+
 
 class LoadStrategy(Enum):
     OVERWRITE = 1
@@ -65,15 +71,23 @@ class BQ():
     def __exit__(self, exc_type, exc_value, exc_tb):
         self.close_client()
 
-    def execute_query(self, query: str | list[str], dry_run: bool = False) -> bigquery.QueryJob:
+    def execute_query(self, query: str | list[str], dry_run: bool = False, parameters: dict = {}) -> bigquery.QueryJob:
         multi = type(query) == list
         if multi:
             query = '\n'.join([x if str(x).strip().endswith(';') else x + ';' for x in query if x])
         else:
             query = query.strip()
 
+        # Build paramters
+        query_parameters = []
+        for parameter, value in parameters.items():
+            if type(value) == list:
+                query_parameters.append(bigquery.ArrayQueryParameter(parameter, MAP__PYTHON_DTYPE__BQ_DTYPE[type(value[0])], value))
+            else:
+                query_parameters.append(bigquery.ScalarQueryParameter(parameter, MAP__PYTHON_DTYPE__BQ_DTYPE[type(value)], value))
+
         logger.debug(f'🔎 Query:\n{query}')
-        query_job_config = bigquery.QueryJobConfig(dry_run=dry_run)
+        query_job_config = bigquery.QueryJobConfig(dry_run=dry_run, query_parameters=query_parameters)
         query_job = self.client.query(query, job_config=query_job_config)
         query_job.result()  # Wait query execution
 
