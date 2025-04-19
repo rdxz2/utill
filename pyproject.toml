@@ -3,7 +3,7 @@ requires = ["setuptools"]
 build-backend = "setuptools.build_meta"
 
 [project]
-name = "utill"
+name = "rdxz2-utill"
 version = "1.0.0"
 authors = [
   { name="Richard Dharmawan", email="richard.dharmawan@gmail.com" },
