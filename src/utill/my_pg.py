@@ -2,6 +2,7 @@ import csv
 import json
 import os
 import psycopg
+import psycopg.conninfo
 import psycopg.rows
 
 from loguru import logger
@@ -18,13 +19,21 @@ class PG:
         connection=None,
         config_source: str | dict = PG_FILENAME,
         autocommit: bool = True,
+        application_name: str = 'utill',
+        row_factory: psycopg.rows = psycopg.rows.tuple_row,
     ) -> None:
-        if type(config_source) == str:
+        # Evaluate config source
+        if isinstance(config_source, str):
+            if os.path.exists(config_source):
+                raise ValueError(f'Config source file not found: {config_source}, create one with \'utill init\'')
             if connection is None:
                 raise ValueError('Connection name must be provided when using file source!')
             conf = json.loads(open(os.path.expanduser(config_source)).read())[connection]
-        elif type(config_source) == dict:
+        elif isinstance(config_source, dict):
             conf = config_source
+        else:
+            raise ValueError('Config source type must be either one of string / dictonary')
+
         (_, host, port) = establish_tunnel(conf)
         self.db_host = host
         self.db_port = port
@@ -35,7 +44,18 @@ class PG:
 
         self.conn = None
         self.cursor = None
-        self.establish_connection(autocommit)
+        self.row_factory = row_factory
+
+        conninfo = {
+            'host': self.db_host,
+            'port': self.db_port,
+            'user': self.db_username,
+            'password': self.db_password,
+            'dbname': self.db_name,
+            'application_name': application_name,
+        }
+        self.dsn = psycopg.conninfo.make_conninfo(**conninfo)
+        self.establish_connection(autocommit, row_factory)
 
     def __enter__(self):
         return self
@@ -44,7 +64,7 @@ class PG:
         self.close()
 
     def establish_connection(self, autocommit: bool, row_factory: psycopg.rows):
-        self.conn = psycopg.connect(f'postgresql://{self.db_username}:{self.db_password}@{self.db_host}:{self.db_port}/{self.db_name}', autocommit=autocommit)
+        self.conn = psycopg.connect(self.dsn, autocommit=autocommit)
         self.cursor = self.conn.cursor(row_factory=row_factory)
         logger.debug(f'PG client open: {self.db_username}@{self.db_host}:{self.db_port}/{self.db_name}, autocommit={self.conn.autocommit}')
 
@@ -57,7 +77,7 @@ class PG:
     def execute_query(self, query: str, *params):
         # Make sure connection alive
         if self.conn.closed:
-            self.establish_connection(self.conn.autocommit)
+            self.establish_connection(self.conn.autocommit, self.row_factory)
 
         query = query.strip()
         logger.debug(f'🔎 Query:\n{query}')
