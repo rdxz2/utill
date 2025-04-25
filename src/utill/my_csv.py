@@ -81,6 +81,7 @@ def combine(src_filenames: list[str], dst_filename: str) -> None:
                 # Copy the header if this is the first file
                 if first_file:
                     csvwriter.writerow(next(csvreader))
+                    first_file = False
                 # Else, skip the header
                 else:
                     next(csvreader)
