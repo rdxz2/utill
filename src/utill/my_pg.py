@@ -24,7 +24,7 @@ class PG:
     ) -> None:
         # Evaluate config source
         if isinstance(config_source, str):
-            if os.path.exists(config_source):
+            if not os.path.exists(config_source):
                 raise ValueError(f'Config source file not found: {config_source}, create one with \'utill init\'')
             if connection is None:
                 raise ValueError('Connection name must be provided when using file source!')
