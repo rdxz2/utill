@@ -9,5 +9,6 @@
     "db": "xxx",
     "username": "xxx",
     "password": "xxx"
-  }
+  },
+  "end": true
 }

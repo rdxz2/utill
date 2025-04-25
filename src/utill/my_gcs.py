@@ -30,6 +30,8 @@ class GCS:
         return f'{self.base_path}/{path}' if self.base_path else path
 
     def change_bucket(self, bucket_name: str):
+        if not bucket_name:
+            raise ValueError('Bucket name needed')
         self.bucket = self.client.bucket(bucket_name)
         logger.debug(f'Change bucket to {self.bucket.name}')
 

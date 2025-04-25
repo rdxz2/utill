@@ -1,4 +1,5 @@
 {
   "base_url": "xxx",
-  "api_key": "xxx"
+  "api_key": "xxx",
+  "end": true
 }
