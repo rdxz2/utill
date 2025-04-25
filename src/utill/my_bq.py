@@ -12,7 +12,6 @@ from .my_const import ByteSize
 from .my_csv import read_header, combine as csv_combine, compress
 from .my_datetime import current_datetime_str
 from .my_env import envs
-from .my_file import make_sure_path_is_directory
 from .my_gcs import GCS
 from .my_queue import ThreadingQ
 from .my_string import replace_nonnumeric
@@ -249,8 +248,7 @@ class BQ():
         if not dst_filename.endswith('.csv'):
             raise ValueError('Destination filename must ends with .csv!')
 
-        dirname = os.path.dirname(dst_filename)
-        make_sure_path_is_directory(dirname)
+        dirname = dst_filename.removesuffix('.csv')
 
         # Remove & recreate existing folder
         if os.path.exists(dirname):
