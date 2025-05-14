@@ -247,6 +247,8 @@ class BQ():
     def download_csv(self, query: str, dst_filename: str, combine: bool = True, pre_query: str = None):
         if not dst_filename.endswith('.csv'):
             raise ValueError('Destination filename must ends with .csv!')
+        
+        dst_filename = os.path.expanduser(dst_filename)
 
         dirname = dst_filename.removesuffix('.csv')
 

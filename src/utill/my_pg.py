@@ -99,59 +99,61 @@ class PG:
                 for data in copy:
                     f.write(data)
 
-    def pg_to_pg(self, pg: "PG", source_table: str, target_table: str, cols: list[str] = None) -> None:
+    def pg_to_pg(self, pg: "PG", src_table_name: str, dst_table_name: str, cols: list[str] = None) -> None:
         tmp_filename = generate_random_string() + '.csv'
         cols_str = ','.join([f'"{x}"' for x in cols]) if (cols is not None and cols != []) else '*'
         try:
-            self.download_csv(f'SELECT {cols_str} FROM {source_table}', tmp_filename)
-            pg.upload_csv(tmp_filename, target_table)
+            self.download_csv(f'SELECT {cols_str} FROM {src_table_name}', tmp_filename)
+            pg.upload_csv(tmp_filename, dst_table_name)
         except:
             raise
         finally:
             os.remove(tmp_filename) if os.path.exists(tmp_filename) else None
 
     def check_table_existence(self, table_name: str) -> bool:
-        if not self.execute_query('''SELECT count(1) AS "cnt" FROM "information_schema"."tables" WHERE "table_schema" || '.' || "table_name" = '%s';''', table_name).fetchone()['cnt']:
+        if not self.execute_query('''SELECT count(1) AS "cnt" FROM "information_schema"."tables" WHERE "table_schema" || '.' || "table_name" = %s;''', table_name).fetchone()[0]:
             raise Exception(f'Target table \'{table_name}\' not created, please create it first!')
 
-    def upload_tuples(self, cols: list[str], tuples: list[tuple], table_name: str) -> None:
-        self.check_table_existence(table_name)
+    def upload_tuples(self, cols: list[str], src_tuples: list[tuple], src_table_name: str) -> None:
+        self.check_table_existence(src_table_name)
 
         cols_str = ','.join([f'"{x}"' for x in cols])
-        query = f'''COPY {table_name}({cols_str}) FROM STDIN'''
+        query = f'''COPY {src_table_name}({cols_str}) FROM STDIN'''
         logger.debug(f'🔎 Query:\n{query}')
         with self.cursor.copy(query) as copy:
-            for row in tuples:
+            for row in src_tuples:
                 copy.write_row(row)
 
-    def upload_list_of_dict(self, data: list[dict], table_name: str) -> None:
-        self.check_table_existence(table_name)
+    def upload_list_of_dict(self, src_data: list[dict], dst_table_name: str) -> None:
+        self.check_table_existence(dst_table_name)
 
-        if len(data) == 0:
+        if len(src_data) == 0:
             raise ValueError('No data to upload!')
 
-        cols = data[0].keys()
+        cols = src_data[0].keys()
         cols_str = ','.join([f'"{x}"' for x in cols])
-        query = f'''COPY {table_name}({cols_str}) FROM STDIN'''
+        query = f'''COPY {dst_table_name}({cols_str}) FROM STDIN'''
         logger.debug(f'🔎 Query:\n{query}')
         with self.cursor.copy(query) as copy:
-            for row in data:
+            for row in src_data:
                 copy.write_row(tuple(row[col] for col in cols))
 
-    def upload_csv(self, file_path: str, table_name: str) -> None:
-        self.check_table_existence(table_name)
+    def upload_csv(self, src_filename: str, dst_table_name: str) -> None:
+        src_filename = os.path.expanduser(src_filename)
 
-        cols_str = ','.join([f'"{x}"' for x in next(csv.reader(open(file_path, 'r')))])
+        self.check_table_existence(dst_table_name)
+
+        cols_str = ','.join([f'"{x}"' for x in next(csv.reader(open(src_filename, 'r')))])
         query = dedent(
             f'''
-            COPY {table_name}({cols_str})
+            COPY {dst_table_name}({cols_str})
             FROM STDIN
             DELIMITER ','
             CSV HEADER;
             '''
         )
         logger.debug(f'🔎 Query:\n{query}')
-        with open(os.path.expanduser(file_path), 'r') as f:
+        with open(os.path.expanduser(src_filename), 'r') as f:
             with self.cursor.copy(query) as copy:
                 while data := f.read(1024):
                     copy.write(data)
