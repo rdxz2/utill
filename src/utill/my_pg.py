@@ -100,7 +100,7 @@ class PG:
                     f.write(data)
 
     def pg_to_pg(self, pg: "PG", src_table_name: str, dst_table_name: str, cols: list[str] = None) -> None:
-        tmp_filename = generate_random_string() + '.csv'
+        tmp_filename = generate_random_string(alphanum=True) + '.csv'
         cols_str = ','.join([f'"{x}"' for x in cols]) if (cols is not None and cols != []) else '*'
         try:
             self.download_csv(f'SELECT {cols_str} FROM {src_table_name}', tmp_filename)
