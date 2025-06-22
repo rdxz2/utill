@@ -74,7 +74,7 @@ class PG:
 
         self.conn.autocommit = autocommit
 
-    def execute_query(self, query: str, params: tuple):
+    def execute_query(self, query: str, params: tuple = None):
         # Make sure connection alive
         if self.conn.closed:
             self.establish_connection(self.conn.autocommit, self.row_factory)
