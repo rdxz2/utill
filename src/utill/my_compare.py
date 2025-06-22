@@ -24,10 +24,10 @@ def same(a, b, float_precision=None) -> tuple[bool, float]:
                 return True, None
 
             if float_precision:
-                a_float_rounded = round(a_float, float_precision)
-                b_float_rounded = round(b_float, float_precision)
+                a_float = round(a_float, float_precision)
+                b_float = round(b_float, float_precision)
 
-            return a_float_rounded == b_float_rounded, abs(a_float - b_float)
+            return a_float == b_float, abs(a_float - b_float)
         except (ValueError, TypeError):
             raise Exception(f'Can\'t compare {a} to {b}')
 
