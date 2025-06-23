@@ -9,16 +9,20 @@ from .my_env import envs
 
 class GCS:
 
-    def __init__(self, project: str = None, bucket_name: str = None):
+    def __init__(self, project: str = None, service_account_filename: str = None, bucket_name: str = None):
         self.project = project if project is not None else envs.GCP_PROJECT_ID
-        self.client = storage.Client(project=self.project)
+
+        if service_account_filename is not None:
+            self.client = storage.Client.from_service_account_json(service_account_filename)
+        else:
+            self.client = storage.Client(project=self.project)
 
         bucket_name_parts = (bucket_name or envs.GCS_BUCKET).split('/')
         self.change_bucket(bucket_name_parts[0])
         self.base_path = '/'.join(bucket_name_parts[1:]) if len(bucket_name_parts) > 1 else None
         not self.base_path or logger.debug(f'Base path: {self.base_path}')
 
-        logger.debug(f'GCS client open, project: {project or "<application-default>"}')
+        logger.debug(f'GCS client open, project: {self.client.project}')
 
     def __enter__(self):
         return self
