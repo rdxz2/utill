@@ -58,11 +58,15 @@ class Dtype:
 
 
 class BQ():
-    def __init__(self, project: str = None):
+    def __init__(self, project: str = None, service_account_filename: str = None):
         self.project = project or envs.GCP_PROJECT_ID
 
-        self.client = bigquery.Client(project=self.project)
-        logger.debug(f'BQ client open, project: {self.project or "<application-default>"}')
+        if service_account_filename is not None:
+            self.client = bigquery.Client.from_service_account_json(service_account_filename)
+        else:
+            self.client = bigquery.Client(project=self.project)
+
+        logger.debug(f'BQ client open, project: {self.client.project}')
 
     def __enter__(self):
         return self
@@ -247,7 +251,7 @@ class BQ():
     def download_csv(self, query: str, dst_filename: str, combine: bool = True, pre_query: str = None):
         if not dst_filename.endswith('.csv'):
             raise ValueError('Destination filename must ends with .csv!')
-        
+
         dst_filename = os.path.expanduser(dst_filename)
 
         dirname = dst_filename.removesuffix('.csv')
