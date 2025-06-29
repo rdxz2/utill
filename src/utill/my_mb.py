@@ -21,10 +21,10 @@ def _translate_user_group_ids(user: dict) -> set:
 
 
 class MB:
-    def __init__(self, base_url: str = None) -> None:
-        config = json.loads(open(MB_FILENAME, 'r').read())
+    def __init__(self, config_source: str = MB_FILENAME) -> None:
+        config = json.loads(open(config_source, 'r').read())
 
-        self.base_url = base_url or config['base_url']
+        self.base_url = config['base_url']
         self.api_key = config['api_key']
 
         self._is_user_initialized = False
