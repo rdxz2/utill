@@ -12,6 +12,12 @@ from .my_dict import AutoPopulatingDict
 from .my_env import MB_FILENAME
 
 
+class UsersNotFoundException(Exception):
+    def __init__(self, username: list[str]):
+        self.message = f'User(s) {username} not exists'
+        super().__init__(self.message)
+
+
 def _decode_collection_location_to_group(collections_dict: dict, location: str):
     return ' > '.join(map(lambda x: collections_dict[x], map(int, location.strip('/').split('/'))))
 
@@ -98,7 +104,7 @@ class MB:
                 not_exists.append(email)
 
         if not_exists:
-            raise ValueError(f'Email not exists: {not_exists}')
+            raise UsersNotFoundException(not_exists)
 
     def create_user(self, first_name: str, last_name: str, email: str, group_ids: list):
         self.send_request(HttpMethod.POST, 'api/user', {
@@ -111,7 +117,11 @@ class MB:
         logger.info(f'✅ Create user {email}')
 
     def deactivate_user_by_email(self, email: str):
-        user = self.dict__user_email__user[email]
+        try:
+            user = self.dict__user_email__user[email]
+        except KeyError as e:
+            raise UsersNotFoundException([email])
+
         self.send_request(HttpMethod.DELETE, f'api/user/{user["id"]}')
         del self.dict__user_email__user[email]
         logger.info(f'✅ Deactivate user [{user["id"]}] {email}')
@@ -120,8 +130,7 @@ class MB:
         try:
             self.dict__user_email__user[email]
         except KeyError as e:
-            logger.error(f'User {email} not exists')
-            raise e
+            raise UsersNotFoundException([email])
         self.send_request(HttpMethod.POST, 'api/session/forgot_password', {'email': email})
         logger.info(f'✅ Reset password {email}')
 
