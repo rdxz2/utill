@@ -33,7 +33,7 @@ def decompress(src_file: str, keep: bool = False):
         with open(dst_file, 'wb') as f_out:
             shutil.copyfileobj(f_in, f_out)
 
-    keep or os.remove(src_file)
+    os.remove(src_file) if not keep else None
 
     return dst_file
 
