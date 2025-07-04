@@ -169,6 +169,7 @@ class BQ():
                 field_delimiter=',')
             AS (
             {query}
+            ORDER BY 1
             );
             '''
         )
