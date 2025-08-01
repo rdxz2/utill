@@ -1,16 +1,14 @@
+from .my_env import PG_FILENAME
+from .my_string import generate_random_string
+from .my_tunnel import establish_tunnel
+from loguru import logger
+from textwrap import dedent
 import csv
 import json
 import os
 import psycopg
 import psycopg.conninfo
 import psycopg.rows
-
-from loguru import logger
-from textwrap import dedent
-
-from .my_env import PG_FILENAME
-from .my_string import generate_random_string
-from .my_tunnel import establish_tunnel
 
 
 class PG:
@@ -100,6 +98,9 @@ class PG:
                     f.write(data)
 
     def pg_to_pg(self, pg: "PG", src_table_name: str, dst_table_name: str, cols: list[str] = None) -> None:
+        self.ensure_table_exists(src_table_name)
+        pg.ensure_table_exists(dst_table_name)
+
         tmp_filename = generate_random_string(alphanum=True) + '.csv'
         cols_str = ','.join([f'"{x}"' for x in cols]) if (cols is not None and cols != []) else '*'
         try:
@@ -110,12 +111,12 @@ class PG:
         finally:
             os.remove(tmp_filename) if os.path.exists(tmp_filename) else None
 
-    def check_table_existence(self, table_name: str) -> bool:
-        if not self.execute_query('''SELECT count(1) AS "cnt" FROM "information_schema"."tables" WHERE "table_schema" || '.' || "table_name" = %s;''', table_name).fetchone()[0]:
+    def ensure_table_exists(self, table_name: str) -> bool:
+        if not self.execute_query('''SELECT count(1) AS "cnt" FROM "information_schema"."tables" WHERE "table_schema" || '.' || "table_name" = %s;''', (table_name, )).fetchone()[0]:
             raise Exception(f'Target table \'{table_name}\' not created, please create it first!')
 
     def upload_tuples(self, cols: list[str], src_tuples: list[tuple], src_table_name: str) -> None:
-        self.check_table_existence(src_table_name)
+        self.ensure_table_exists(src_table_name)
 
         cols_str = ','.join([f'"{x}"' for x in cols])
         query = f'''COPY {src_table_name}({cols_str}) FROM STDIN'''
@@ -125,7 +126,7 @@ class PG:
                 copy.write_row(row)
 
     def upload_list_of_dict(self, src_data: list[dict], dst_table_name: str) -> None:
-        self.check_table_existence(dst_table_name)
+        self.ensure_table_exists(dst_table_name)
 
         if len(src_data) == 0:
             raise ValueError('No data to upload!')
@@ -141,7 +142,7 @@ class PG:
     def upload_csv(self, src_filename: str, dst_table_name: str) -> None:
         src_filename = os.path.expanduser(src_filename)
 
-        self.check_table_existence(dst_table_name)
+        self.ensure_table_exists(dst_table_name)
 
         cols_str = ','.join([f'"{x}"' for x in next(csv.reader(open(src_filename, 'r')))])
         query = dedent(

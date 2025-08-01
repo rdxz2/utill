@@ -1,21 +1,19 @@
-import humanize
-import math
-import os
-import shutil
-
-from enum import Enum
-from google.cloud import bigquery, storage
-from loguru import logger
-from textwrap import dedent
-
 from .my_const import ByteSize
-from .my_csv import read_header, combine as csv_combine, compress
+from .my_csv import read_header, combine as compress
 from .my_datetime import current_datetime_str
 from .my_env import envs
 from .my_gcs import GCS
 from .my_queue import ThreadingQ
 from .my_string import replace_nonnumeric
 from .my_xlsx import csv_to_xlsx
+from enum import Enum
+from google.cloud import bigquery, storage
+from loguru import logger
+from textwrap import dedent
+import csv
+import humanize
+import math
+import os
 
 MAP__PYTHON_DTYPE__BQ_DTYPE = {
     int: 'INTEGER',
@@ -92,7 +90,6 @@ class BQ():
         logger.debug(f'🔎 Query:\n{query}')
         query_job_config = bigquery.QueryJobConfig(dry_run=dry_run, query_parameters=query_parameters)
         query_job = self.client.query(query, job_config=query_job_config)
-        query_job.result()  # Wait query execution
 
         if not multi:
             logger.debug(f'[Job ID] {query_job.job_id}, [Processed] {humanize.naturalsize(query_job.total_bytes_processed)}, [Billed] {humanize.naturalsize(query_job.total_bytes_billed)}, [Affected] {query_job.num_dml_affected_rows or 0} row(s)',)
@@ -249,40 +246,41 @@ class BQ():
 
         # END: Load to BQ ----->>
 
-    def download_csv(self, query: str, dst_filename: str, combine: bool = True, pre_query: str = None):
-        if not dst_filename.endswith('.csv'):
-            raise ValueError('Destination filename must ends with .csv!')
+    def download_csv(self, query: str, dst_filepath: str, row_limit: int | None = None):
+        if not dst_filepath.endswith('.csv'):
+            raise ValueError('Destination filename must ends with .csv')
 
-        dst_filename = os.path.expanduser(dst_filename)
+        dst_filepath = os.path.expanduser(dst_filepath)  # /path/to/file.csv
 
-        dirname = dst_filename.removesuffix('.csv')
+        query_job = self.execute_query(query)
+        query_job_result = query_job.result()
+        row_count = 0
+        file_index = 1
 
-        # Remove & recreate existing folder
-        if os.path.exists(dirname):
-            shutil.rmtree(dirname)
-        os.makedirs(dirname, exist_ok=True)
+        # Stream-download-split result
+        def open_file(f):
+            if f:
+                f.close()
+            dst_filepath_part = f'{dst_filepath.removesuffix(".csv")}_{file_index:06}.csv' if row_limit else dst_filepath
+            logger.info(f'Writing into file: {dst_filepath_part} ...')
+            f = open(dst_filepath_part, 'w', newline='', encoding='utf-8')
+            writer = csv.writer(f)
+            writer.writerow([field.name for field in query_job_result.schema])  # Write header
 
-        # Export data into GCS
-        current_time = current_datetime_str()
-        gcs_path = f'gs://{envs.GCS_BUCKET}/tmp/unload__{current_time}/*.csv.gz'
-        self.export_data(query, gcs_path, pre_query)
+            return f, writer
 
-        # Download into local machine
-        gcs = GCS(self.project)
-        logger.info('Downloads from GCS...')
-        downloaded_filenames = []
-        for blob in gcs.list(f'tmp/unload__{current_time}/'):
-            file_path_part = os.path.join(dirname, blob.name.split('/')[-1])
-            gcs.download(blob, file_path_part)
-            downloaded_filenames.append(file_path_part)
+        f, writer = open_file(None)
+        for row in query_job_result:
+            writer.writerow(row)
 
-        # Combine the file and clean up the file chunks
-        if combine:
-            logger.info('Combine downloaded csv...')
-            csv_combine(downloaded_filenames, dst_filename)
-            shutil.rmtree(dirname)
-
-        return dst_filename
+            if row_limit:
+                row_count += 1
+                if row_count >= row_limit:
+                    row_count = 0
+                    file_index += 1
+                    f, writer = open_file(f)
+        if f:
+            f.close()
 
     def download_xlsx(self, src_table_fqn: str, dst_filename: str, xlsx_row_limit: int = 950000):
         if not dst_filename.endswith('.xlsx'):
