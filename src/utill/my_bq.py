@@ -90,6 +90,7 @@ class BQ():
         logger.debug(f'🔎 Query:\n{query}')
         query_job_config = bigquery.QueryJobConfig(dry_run=dry_run, query_parameters=query_parameters)
         query_job = self.client.query(query, job_config=query_job_config)
+        query_job.result()  # Wait for the job to complete
 
         if not multi:
             logger.debug(f'[Job ID] {query_job.job_id}, [Processed] {humanize.naturalsize(query_job.total_bytes_processed)}, [Billed] {humanize.naturalsize(query_job.total_bytes_billed)}, [Affected] {query_job.num_dml_affected_rows or 0} row(s)',)
