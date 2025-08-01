@@ -178,7 +178,8 @@ class BQ():
                 schema_str = ',\n'.join([column['name'] for column in schema])
                 query_parts.append(f'(\n{schema_str}\n)')
             if table_options:
-                query_parts.append(f'OPTIONS (\n{",\n".join(table_options)}\n)')
+                table_options_str = ',\n'.join(table_options)
+                query_parts.append(f'OPTIONS (\n{table_options_str}\n)')
         else:
             logger.debug('Table not exist, constructing CREATE TABLE query ...')
             query_parts = [
@@ -193,7 +194,8 @@ class BQ():
                 clustering_fields_str = ', '.join([f'`{field}`' for field in clustering_fields])
                 query_parts.append(f'CLUSTER BY {clustering_fields_str}')
             if table_options:
-                query_parts.append(f'OPTIONS (\n{",\n".join(table_options)}\n)')
+                table_options_str = ',\n'.join(table_options)
+                query_parts.append(f'OPTIONS (\n{table_options_str}\n)')
             query_parts.append('AS')
         query_parts.append(textwrap.dedent(query).strip())
 
