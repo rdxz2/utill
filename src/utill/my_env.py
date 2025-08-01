@@ -49,6 +49,7 @@ def init_mb_file():
 class Envs(BaseSettings):
 
     GCP_PROJECT_ID: Optional[str] = None
+    GCP_REGION: Optional[str] = None
     GCS_BUCKET: Optional[str] = None
 
     def set_var(self, k: str, v: str):

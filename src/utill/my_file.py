@@ -28,7 +28,7 @@ def decompress(src_file: str, keep: bool = False):
     dst_file = src_file.removesuffix('.gz')
 
     os.remove(dst_file) if os.path.exists(dst_file) else None
-    logger.debug(f'📄 Decompress {src_file} --> {dst_file}')
+    logger.debug(f'Decompress {src_file} to {dst_file}')
     with gzip.open(src_file, 'rb') as f_in:
         with open(dst_file, 'wb') as f_out:
             shutil.copyfileobj(f_in, f_out)

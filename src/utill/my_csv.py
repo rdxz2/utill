@@ -57,13 +57,13 @@ def compress(src_filename: str, keep: bool = False, max_size_bytes=ByteSize.GB, 
     yield dst_filename
 
 
-def combine(src_filenames: list[str], dst_filename: str) -> None:
+def combine(src_filenames: list[str], dst_filename: str, gzip: bool = False, delete: bool = False) -> None:
     csv.field_size_limit(min(sys.maxsize, 2147483646))  # FIX: _csv.Error: field larger than field limit (131072)
 
     if not dst_filename.endswith('.csv'):
         raise ValueError('Output filename must ends with \'.csv\'!')
 
-    first_file = True
+    first_src_file = True
     with open(dst_filename, 'w') as fout:
         csvwriter = csv.writer(fout)
 
@@ -71,21 +71,25 @@ def combine(src_filenames: list[str], dst_filename: str) -> None:
             src_filename = os.path.expanduser(src_filename)
 
             # Decompress gzipped csv
-            if src_filename.endswith('.csv.gz'):
+            if gzip:
                 src_filename = decompress(src_filename)
 
-            # Copy
+            # Write content into file
             with open(src_filename, 'r') as fin:
                 csvreader = csv.reader(fin)
 
-                # Copy the header if this is the first file
-                if first_file:
+                # Write header only at first file
+                if first_src_file:
                     csvwriter.writerow(next(csvreader))
-                    first_file = False
-                # Else, skip the header
+                    first_src_file = False
                 else:
                     next(csvreader)
 
+                # Write body
                 [csvwriter.writerow(row) for row in csvreader]
 
-            logger.info(f'✅ Combine {src_filename}')
+            logger.debug(f'Combine {src_filename}')
+
+            if delete:
+                os.remove(src_filename)
+                logger.debug(f'Delete {src_filename}')

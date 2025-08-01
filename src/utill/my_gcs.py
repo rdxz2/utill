@@ -1,123 +1,79 @@
-import os
-import re
-
+from .my_datetime import get_current_datetime_str
+from .my_env import envs
 from google.cloud import storage
 from loguru import logger
-
-from .my_env import envs
+import os
 
 
 class GCS:
 
-    def __init__(self, project: str = None, service_account_filename: str = None, bucket_name: str = None):
-        self.project = project if project is not None else envs.GCP_PROJECT_ID
+    def __init__(self, bucket: str | None = None, project_id: str | None = None):
+        if project_id is None and envs.GCP_PROJECT_ID is None:
+            logger.warning('Using ADC for GCS authentication')
 
-        if service_account_filename is not None:
-            self.client = storage.Client.from_service_account_json(service_account_filename)
-        else:
-            self.client = storage.Client(project=self.project)
+        if bucket is None and envs.GCS_BUCKET is None:
+            raise ValueError('Bucket name must be provided either as an argument or set in environment variables.')
 
-        bucket_name_parts = (bucket_name or envs.GCS_BUCKET).split('/')
-        self.change_bucket(bucket_name_parts[0])
-        self.base_path = '/'.join(bucket_name_parts[1:]) if len(bucket_name_parts) > 1 else None
-        not self.base_path or logger.debug(f'Base path: {self.base_path}')
-
+        self.client = storage.Client(project=project_id or envs.GCP_PROJECT_ID)
+        self.bucket = self.client.bucket(bucket or envs.GCS_BUCKET)
         logger.debug(f'GCS client open, project: {self.client.project}')
 
-    def __enter__(self):
-        return self
+    def get_blob(self, blobpath: str) -> storage.Blob:
+        return self.bucket.blob(blobpath)
 
-    def __exit__(self, exc_type, exc_value, exc_tb):
-        self.close_client()
+    def list_blobs(self, prefix: str) -> list[storage.Blob]:
+        return self.bucket.list_blobs(prefix=prefix)
 
-    def _construct_path(self, path: str) -> str:
-        return f'{self.base_path}/{path}' if self.base_path else path
+    def delete_blob(self, blobpath: str | storage.Blob) -> storage.Blob:
+        blob = self.get_blob(blobpath) if isinstance(blobpath, str) else blobpath
+        return blob.delete()
 
-    def change_bucket(self, bucket_name: str):
-        if not bucket_name:
-            raise ValueError('Bucket name needed')
-        self.bucket = self.client.bucket(bucket_name)
-        logger.debug(f'Change bucket to {self.bucket.name}')
+    def copy(self, src_blobpath: str, dst_blobpath: str, dst_bucket: str = None, move: bool = False):
+        src_bucket = self.bucket
+        src_blob = self.get_blob(src_blobpath)
+        dst_bucket = dst_bucket or src_bucket.name
 
-    def get(self, path: str) -> storage.Blob:
-        path = self._construct_path(path)
-        return self.bucket.blob(path)
+        self.bucket.copy_blob(src_blob, dst_bucket, dst_blobpath)
 
-    def list(self, path: str) -> list[storage.Blob]:
-        path = self._construct_path(path)
-        if '*' in path:
-            path_prefix = path.split('*')[0]
-            regex_pattern = '^' + re.escape(path).replace('\\*', '.*') + '$'
-            regex = re.compile(regex_pattern)
-            return [x for x in self.bucket.list_blobs(prefix=path_prefix) if regex.match(x.name)]
+        # Move mode
+        if move:
+            self.delete_blob(src_blobpath)
+            logger.debug(f'Moved gs://{src_bucket}/{src_blobpath} to gs://{dst_bucket}/{dst_blobpath}')
+        # Copy mode
+        else:
+            logger.debug(f'Copied gs://{src_bucket}/{src_blobpath} to gs://{dst_bucket}/{dst_blobpath}')
 
-        return list(self.bucket.list_blobs(prefix=path))
+    def upload(self, src_filepath: str, dst_blobpath: str, move: bool = False):
+        blob = self.get_blob(dst_blobpath)
+        blob.upload_from_filename(src_filepath)
 
-    def copy(self, src_path: str, dst_path: str, mv: bool = False):
-        src_blob = self.get(src_path)
-        dst_blob = self.get(dst_path)
+        # Move mode
+        if move:
+            os.remove(src_filepath)
+            logger.debug(f'Moved {src_filepath} to gs://{self.bucket.name}/{blob.name}')
+        # Copy mode
+        else:
+            logger.debug(f'Uploaded {src_filepath} to gs://{self.bucket.name}/{blob.name}')
 
-        dst_blob.rewrite(src_blob)
+    def download(self, src_blobpath: str | storage.Blob, dst_filepath: str, move: bool = False):
+        blob = self.get_blob(src_blobpath) if isinstance(src_blobpath, str) else src_blobpath
+        blob.download_to_filename(dst_filepath)
 
-        logger.debug(f'✅ Copy gs://{src_blob.bucket.name}/{src_blob.name} to gs://{dst_blob.bucket.name}/{dst_blob.name}')
+        if move:
+            self.delete_blob(blob)
+            logger.debug(f'Moved gs://{self.bucket.name}/{blob.name} to {dst_filepath}')
+        else:
+            logger.debug(f'Copied gs://{self.bucket.name}/{blob.name} to {dst_filepath}')
 
-        not mv or GCS.remove_blob(src_blob)
-
-        return dst_blob
-
-    def copy_to_other_gcs(self, src_blob: storage.Blob, dst_gcs: "GCS", dst_path: str, mv: bool = False):
-        self.bucket.copy_blob(src_blob, dst_gcs.bucket, dst_path)
-        dst_blob = dst_gcs.get(dst_path)
-
-        not mv or GCS.remove_blob(src_blob)
-
-        return dst_blob
-
-    def upload(self, local_path: str, remote_path: str, mv: bool = False):
-        local_path = os.path.expanduser(local_path)
-
-        if not os.path.exists(local_path):
-            raise FileNotFoundError(f'File not found: {local_path}')
-
-        blob = self.get(remote_path)
-        blob.upload_from_filename(local_path)
-
-        logger.debug(f'✅ Upload {local_path} to gs://{self.bucket.name}/{blob.name}')
-
-        not mv or os.remove(local_path)
-
-        return blob
-
-    def download(self, obj: str | storage.Blob, local_path: str, mv: bool = False):
-        local_path = os.path.expanduser(local_path)
-        is_blob = type(obj) == storage.Blob
-
-        if os.path.isdir(local_path):
-            local_path = os.path.join(local_path, obj.name.split('/')[-1] if is_blob else os.path.basename(obj))
-            if not os.path.dirname(local_path):
-                raise FileNotFoundError(f'Destination directory not found: {os.path.dirname(local_path)}')
-
-        blob = obj if is_blob else self.get(obj)
-        blob.download_to_filename(local_path)
-
-        logger.debug(f'✅ Download gs://{self.bucket.name}/{blob.name} to {local_path}')
-
-        not mv or GCS.remove_blob(blob)
-
-        return blob
-
-    def remove(self, remote_path: str):
-        blob = self.get(remote_path)
-
-        GCS.remove_blob(blob)
-
-        return blob
-
-    def close_client(self):
-        self.client.close()
-        logger.debug('GCS client close')
+    # MARK: Utilities
 
     @staticmethod
-    def remove_blob(blob: storage.Blob):
-        blob.delete()
-        logger.debug(f'🗑️ Remove gs://{blob.bucket.name}/{blob.name}')
+    def build_tmp_dirpath(prefix: str = 'tmp') -> str:
+        """
+        Builds a temporary directory path in the GCS bucket.
+        """
+        return f'{prefix}/{get_current_datetime_str()}'
+
+    def close(self):
+        self.client.close()
+        logger.debug('GCS client closed')

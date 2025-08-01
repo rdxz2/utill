@@ -6,6 +6,7 @@ def _init(mode: str):
     match mode:
         case 'google-cloud':
             setattr(envs, 'GCP_PROJECT_ID', input('GCP_PROJECT_ID: '))
+            setattr(envs, 'GCP_REGION', input('GCP_REGION: '))
             setattr(envs, 'GCS_BUCKET', input('GCS_BUCKET: '))
             envs.write()
             logger.info('Google cloud configuration initialized')

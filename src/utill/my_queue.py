@@ -1,7 +1,82 @@
-import queue
-import concurrent.futures
-
 from loguru import logger
+from typing import Callable
+import concurrent.futures
+import queue
+
+class StreamingQ:
+    def __init__(self, producer_func: Callable, producer_args: tuple, consumer_func: Callable, max_queue_size: int = 0):
+        self.producer_func = producer_func
+        self.producer_args = producer_args
+        self.consumer_func = consumer_func
+        
+        # Use maxsize for backpressure control (0 = unlimited)
+        self.q = queue.Queue(maxsize=max_queue_size)
+
+    def execute(self):
+        """
+        Execute producer and consumer with true streaming using generators.
+        Yields consumer results as they become available.
+        """
+        def producer():
+            try:
+                for item in self.producer_func(*self.producer_args):
+                    self.q.put(item)
+                    logger.debug(f'🌾 Produced {item}')
+            except Exception as e:
+                logger.error(f'Producer error: {e}')
+                self.q.put(('ERROR', e))
+            finally:
+                # Signal end of production
+                self.q.put(None)
+                logger.debug('🌾 Producer finished')
+
+        def consumer():
+            while True:
+                item = self.q.get()
+                
+                if item is None:
+                    # End of stream signal
+                    self.q.task_done()
+                    break
+                
+                if isinstance(item, tuple) and item[0] == 'ERROR':
+                    # Propagate producer error
+                    self.q.task_done()
+                    raise item[1]
+                
+                try:
+                    # Unpack item if it's a tuple, otherwise pass as single arg
+                    if isinstance(item, tuple):
+                        result = self.consumer_func(*item)
+                    else:
+                        result = self.consumer_func(item)
+                    
+                    self.q.task_done()
+                    logger.debug(f'🔥 Consumed {item} -> {result}')
+                    yield result
+                
+                except Exception as e:
+                    self.q.task_done()
+                    logger.error(f'Consumer error processing {item}: {e}')
+                    raise
+
+        with concurrent.futures.ThreadPoolExecutor(max_workers=2) as executor:
+            # Start producer in background
+            future_producer = executor.submit(producer)
+            
+            try:
+                # Yield results as they become available
+                for result in consumer():
+                    yield result
+                
+                # Wait for producer to complete
+                future_producer.result()
+                
+            except Exception as e:
+                # Cancel producer if consumer fails
+                future_producer.cancel()
+                raise
+
 
 
 class ThreadingQ:

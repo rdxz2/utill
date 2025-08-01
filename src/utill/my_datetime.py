@@ -11,7 +11,7 @@ def get_current_date_str(use_separator: bool = False) -> str:
     return datetime.now().strftime('%Y-%m-%d' if use_separator else '%Y%m%d')
 
 
-def current_datetime_str(use_separator: bool = False) -> str:
+def get_current_datetime_str(use_separator: bool = False) -> str:
     return datetime.now().strftime('%Y-%m-%d %H:%M:%S' if use_separator else '%Y%m%d%H%M%S')
 
 
