@@ -399,7 +399,7 @@ class BQ():
                 for tmp_blobs in gcs.list_blobs(dst_gcs_prefix):
                     local_tmp_filepath = os.path.join(tmp_dirname, tmp_blobs.name.split('/')[-1])
                     gcs.download(tmp_blobs, local_tmp_filepath, move=True)
-                    logger.debug(f'Downloaded {tmp_blobs.name} to {local_tmp_filepath}')
+                    # logger.debug(f'Downloaded {tmp_blobs.name} to {local_tmp_filepath}')
                     local_tmp_filepaths.append(local_tmp_filepath)
 
                 # Combine downloaded files
@@ -435,7 +435,7 @@ class BQ():
                 for part in range(parts):
                     dst_filepath_part = f'{dst_filepath.removesuffix(".csv")}_{part + 1:06}.csv'
                     _export_download_combine(
-                        f'SELECT * EXCEPT(_rn) FROM `{tmp_table_fqn_rn}` WHERE _rn BETWEEN {(part * csv_row_limit) + 1} AND {(part + 1) * csv_row_limit}',
+                        f'SELECT * EXCEPT(_rn) FROM `{tmp_table_fqn_rn}` WHERE _rn BETWEEN {(part * csv_row_limit) + 1} AND {(part + 1) * csv_row_limit} ORDER BY _rn',
                         dst_gcs_prefix=gcs.build_tmp_dirpath(),
                         dst_filepath=dst_filepath_part,
                     )

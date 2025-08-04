@@ -16,7 +16,7 @@ class GCS:
 
         self.client = storage.Client(project=project_id or envs.GCP_PROJECT_ID)
         self.bucket = self.client.bucket(bucket or envs.GCS_BUCKET)
-        logger.debug(f'GCS client open, project: {self.client.project}')
+        logger.debug(f'GCS client open, project: {self.client.project}, bucket: {self.bucket.name}')
 
     def get_blob(self, blobpath: str) -> storage.Blob:
         return self.bucket.blob(blobpath)
