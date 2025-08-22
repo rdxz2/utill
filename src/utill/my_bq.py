@@ -312,21 +312,24 @@ class BQ():
 
     def upload_csv(
         self,
-        src_filename: str,
+        src_filepath: str,
         dst_table_fqn: str,
         schema: list[dict] | None = None,
         gcs_bucket: str | None = None,
         partition_by: str = None,
-        cluster_cols: list[str] = None,
+        clustering_fields: list[str] = None,
         compression: DataFileCompression | None = None,
         load_strategy: LoadStrategy = LoadStrategy.APPEND,
     ):
         self.raise_for_invalid_table_fqn(dst_table_fqn)
 
-        if compression == DataFileCompression.GZIP and not src_filename.endswith('.gz'):
+        if compression == DataFileCompression.GZIP and not src_filepath.endswith('.gz'):
             raise ValueError('Please provide file path with .gz extension if using compression = GZIP')
-        elif not src_filename.endswith('.csv'):
+        elif not src_filepath.endswith('.csv'):
             raise ValueError('Please provide file path with .csv extension')
+        
+        src_filename, src_fileextension = os.path.splitext(src_filepath)
+        src_filename = os.path.basename(src_filename)  # Only get filename
 
         # # <<----- START: Upload to GCS
 
@@ -354,12 +357,21 @@ class BQ():
         # Upload to GCS
         # TODO: Re-implement the producer-consumer model to upload multiple files
         gcs = my_gcs.GCS(bucket=gcs_bucket, project_id=self.client.project)
-        dst_blobpath = f'tmp/my_bq/{my_datetime.get_current_datetime_str()}/{my_string.replace_nonnumeric(os.path.basename(src_filename), "_").lower()}'
-        gcs.upload(src_filename, dst_blobpath)
+        dst_blobpath = f'tmp/my_bq/{my_datetime.get_current_datetime_str()}/{my_string.replace_nonnumeric(src_filename, "_").lower()}{src_fileextension}'
+        gcs.upload(src_filepath, dst_blobpath)
 
         # Load to BQ
         try:
-            self.load_data(dst_blobpath, dst_table_fqn, schema=schema, partition_by=partition_by, cluster_cols=cluster_cols, format=DataFileFormat.CSV, compression=compression, load_strategy=load_strategy)
+            self.load_data(
+                f'gs://{gcs.bucket.name}/{dst_blobpath}',
+                dst_table_fqn,
+                schema=schema,
+                partition_by=partition_by,
+                clustering_fields=clustering_fields,
+                format=DataFileFormat.CSV,
+                compression=compression,
+                load_strategy=load_strategy,
+            )
         except:
             raise
         finally:
