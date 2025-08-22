@@ -5,7 +5,7 @@ import click
 def main(): pass
 
 
-# Conf
+# MARK: Conf
 
 
 @main.group('conf', help='Configure this library')
@@ -21,7 +21,28 @@ def main__conf__list(**kwargs): from ._conf import _list; _list(**kwargs)
 def main__conf__set(**kwargs): from ._conf import _set; _set(**kwargs)
 
 
-# PG
+# MARK: Metabase
+
+
+@main.group('mb', help='Metabase utility commands')
+def main__mb(): pass
+@main__mb.command('julo-grant', help='Grant access to Metabase questions/collections/dashboards')
+@click.option('-u', '--email', 'emails', type=str, multiple=True, help='User emails')
+@click.option('-l', '--url', 'urls', type=str, multiple=True, help='URLs')
+def main__mb__grant(**kwargs): from ._mb import _grant; _grant(**kwargs)
+@main__mb.command('copy-permissions', help='Copy all permissions from one user to another')
+@click.argument('src_email', type=str)
+@click.argument('dst_emails', type=str, nargs=-1)
+def main__mb__copy_permissions(**kwargs): from ._mb import _copy_permissions; _copy_permissions(**kwargs)
+@main__mb.command('reset-password', help='Reset Metabase user password')
+@click.option('-u', '--email', 'emails', type=str, required=True, multiple=True, help='User emails')
+def main__mb__reset_password(**kwargs): from ._mb import _reset_password; _reset_password(**kwargs)
+@main__mb.command('deactivate-user', help='Deactivate Metabase user')
+@click.option('-u', '--email', 'emails', type=str, required=True, multiple=True, help='User emails')
+def main__mb__deactivate_user(**kwargs): from ._mb import _deactivate_user; _deactivate_user(**kwargs)
+
+
+# MARK: PG
 
 
 @main.group('pg', help='PostgreSQL utility')
@@ -40,7 +61,7 @@ def main__pg__pg_to_pg(**kwargs): from ._pg import _pg_to_pg; _pg_to_pg(**kwargs
 def main__pg__upload_csv(**kwargs): from ._pg import _upload_csv; _upload_csv(**kwargs)
 
 
-# BQ
+# MARK: BQ
 
 
 @main.group('bq', help='BigQuery utility')
@@ -60,7 +81,7 @@ def main__bq__upload_csv(**kwargs): from ._bq import _upload_csv; _upload_csv(**
 def main__bq__download_table(**kwargs): from ._bq import _download_table; _download_table(**kwargs)
 
 
-# Encyrption
+# MARK: Encyrption
 
 
 @main.group('enc', help='Encryption utility')
@@ -71,7 +92,7 @@ def main__enc(): pass
 def main__enc__encrypt(**kwargs): from ._enc import _encrypt; _encrypt(**kwargs)
 
 
-# Other utilities
+# MARK: Other utilities
 
 
 @main.command('random', help='Generate random string')
