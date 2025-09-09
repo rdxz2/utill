@@ -1,4 +1,4 @@
-from enum import Enum
+from enum import StrEnum
 
 
 class ByteSize:
@@ -8,11 +8,14 @@ class ByteSize:
     TB = 1_099_511_627_776
 
 
-class HttpMethod(Enum):
-    GET = 1
-    POST = 2
-    PUT = 3
-    DELETE = 4
+from enum import StrEnum
 
-    def __str__(self):
-        return self.name
+
+class HttpMethod(StrEnum):
+    GET = "GET"
+    POST = "POST"
+    PUT = "PUT"
+    DELETE = "DELETE"
+    PATCH = "PATCH"
+    HEAD = "HEAD"
+    OPTIONS = "OPTIONS"

@@ -29,6 +29,6 @@ def same(a, b, float_precision=None) -> tuple[bool, float]:
 
             return a_float == b_float, abs(a_float - b_float)
         except (ValueError, TypeError):
-            raise Exception(f'Can\'t compare {a} to {b}')
+            raise Exception(f"Can't compare {a} to {b}")
 
     return str(a) == str(b), None

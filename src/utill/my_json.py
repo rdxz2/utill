@@ -6,7 +6,7 @@ def _crawl_dictionary_keys(d: dict, path: tuple = ()) -> list[str]:
     paths: list[tuple] = []
 
     for key in d.keys():
-        key_path = path + (key, )
+        key_path = path + (key,)
 
         # Recursively traverse nested dictionary
         if type(d[key]) is dict:
@@ -35,11 +35,11 @@ def flatten(data: str | dict) -> list:
 
 def get_path(data: dict, path: str) -> str:
     if type(data) != dict:
-        raise ValueError('data is not a dictionary!')
+        raise ValueError("data is not a dictionary!")
 
-    items = path.split('.')
+    items = path.split(".")
     item = items[0]
-    path_remaining = '.'.join(items[1:]) if len(items) > 1 else None
+    path_remaining = ".".join(items[1:]) if len(items) > 1 else None
 
     if item not in data:
         return None
@@ -55,8 +55,8 @@ def load_jsonc_file(path) -> dict:
     Read a .jsonc (JSON with comment) files, as json.loads cannot read it
     """
 
-    with open(path, 'r') as f:
+    with open(path, "r") as f:
         content = f.read()
         pattern = r'("(?:\\.|[^"\\])*")|\/\/.*|\/\*[\s\S]*?\*\/'
-        content = re.sub(pattern, lambda m: m.group(1) if m.group(1) else '', content)
+        content = re.sub(pattern, lambda m: m.group(1) if m.group(1) else "", content)
         return json.loads(content)

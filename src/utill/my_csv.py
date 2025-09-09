@@ -11,25 +11,32 @@ from .my_file import decompress
 
 def read_header(filename: str):
     filename = os.path.expanduser(filename)
-    with open(filename, 'r') as f:
+    with open(filename, "r") as f:
         csvreader = csv.reader(f)
         return next(csvreader)
 
 
 def write(filename: str, rows: list[tuple], append: bool = False):
     filename = os.path.expanduser(filename)
-    with open(filename, 'a' if append else 'w') as f:
+    with open(filename, "a" if append else "w") as f:
         csvwriter = csv.writer(f)
         csvwriter.writerows(rows)
 
 
-def compress(src_filename: str, keep: bool = False, max_size_bytes=ByteSize.GB, src_fopen=None, header=None, file_count=1):
+def compress(
+    src_filename: str,
+    keep: bool = False,
+    max_size_bytes=ByteSize.GB,
+    src_fopen=None,
+    header=None,
+    file_count=1,
+):
     src_filename = os.path.expanduser(src_filename)
     current_size = 0
     dst_filename = f'{src_filename}_part{str(file_count).rjust(6, "0")}.gz'
     os.remove(dst_filename) if os.path.exists(dst_filename) else None
-    logger.debug(f'📄 Compress csv {src_filename} --> {dst_filename}')
-    gz = gzip.open(dst_filename, 'wt')
+    logger.debug(f"📄 Compress csv {src_filename} --> {dst_filename}")
+    gz = gzip.open(dst_filename, "wt")
 
     src_fopen = src_fopen or open(src_filename)
     header = header or src_fopen.readline()
@@ -42,14 +49,16 @@ def compress(src_filename: str, keep: bool = False, max_size_bytes=ByteSize.GB, 
             break
 
         gz.write(line)
-        current_size += len(line.encode('utf-8'))
+        current_size += len(line.encode("utf-8"))
 
         if current_size >= max_size_bytes:
             gz.close()
             yield dst_filename
 
             file_count += 1
-            yield from compress(src_filename, keep, max_size_bytes, src_fopen, header, file_count)
+            yield from compress(
+                src_filename, keep, max_size_bytes, src_fopen, header, file_count
+            )
             return
 
     gz.close()
@@ -57,14 +66,21 @@ def compress(src_filename: str, keep: bool = False, max_size_bytes=ByteSize.GB, 
     yield dst_filename
 
 
-def combine(src_filenames: list[str], dst_filename: str, gzip: bool = False, delete: bool = False) -> None:
-    csv.field_size_limit(min(sys.maxsize, 2147483646))  # FIX: _csv.Error: field larger than field limit (131072)
+def combine(
+    src_filenames: list[str],
+    dst_filename: str,
+    gzip: bool = False,
+    delete: bool = False,
+) -> None:
+    csv.field_size_limit(
+        min(sys.maxsize, 2147483646)
+    )  # FIX: _csv.Error: field larger than field limit (131072)
 
-    if not dst_filename.endswith('.csv'):
-        raise ValueError('Output filename must ends with \'.csv\'!')
+    if not dst_filename.endswith(".csv"):
+        raise ValueError("Output filename must ends with '.csv'!")
 
     first_src_file = True
-    with open(dst_filename, 'w') as fout:
+    with open(dst_filename, "w") as fout:
         csvwriter = csv.writer(fout)
 
         for src_filename in src_filenames:
@@ -75,7 +91,7 @@ def combine(src_filenames: list[str], dst_filename: str, gzip: bool = False, del
                 src_filename = decompress(src_filename)
 
             # Write content into file
-            with open(src_filename, 'r') as fin:
+            with open(src_filename, "r") as fin:
                 csvreader = csv.reader(fin)
 
                 # Write header only at first file
@@ -88,8 +104,8 @@ def combine(src_filenames: list[str], dst_filename: str, gzip: bool = False, del
                 # Write body
                 [csvwriter.writerow(row) for row in csvreader]
 
-            logger.debug(f'Combine {src_filename}')
+            logger.debug(f"Combine {src_filename}")
 
             if delete:
                 os.remove(src_filename)
-                logger.debug(f'Delete {src_filename}')
+                logger.debug(f"Delete {src_filename}")
