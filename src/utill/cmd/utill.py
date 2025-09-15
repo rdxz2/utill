@@ -54,7 +54,7 @@ def main__mb():
 
 
 @main__mb.command(
-    "julo-grant", help="Grant access to Metabase questions/collections/dashboards"
+    "jl-grant", help="Grant access to Metabase questions/collections/dashboards"
 )
 @click.option("-u", "--email", "emails", type=str, multiple=True, help="User emails")
 @click.option("-l", "--url", "urls", type=str, multiple=True, help="URLs")
@@ -66,9 +66,9 @@ def main__mb():
     help="Create user if not exists, also reactivate user if it's already exists default: False",
 )
 def main__mb__grant(**kwargs):
-    from ._mb import _julo_grant
+    from ._mb import _jl_grant
 
-    _julo_grant(**kwargs)
+    _jl_grant(**kwargs)
 
 
 @main__mb.command(

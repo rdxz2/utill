@@ -1,5 +1,5 @@
 
-def _julo_grant(emails: list[str], url: str, create_user_if_not_exists: bool = False):
+def _jl_grant(emails: list[str], url: str, create_user_if_not_exists: bool = False):
     from ..my_mb import MB
     from loguru import logger
 
