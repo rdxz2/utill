@@ -246,10 +246,10 @@ class MB:
         logger.info(f"Getting Metabase object information from {url}")
         url = (
             str(url).removeprefix("http://").removeprefix("https://")
-        )  # https://metabase-prod.julo.co.id/question/1234-xxx-yyy
+        )  # https://somesite/question/1234-xxx-yyy
         _, object_type, object_id = url.split(
             "/", 3
-        )  # metabase-prod.julo.co.id/question/1234-xxx-yyy
+        )  # somesite/question/1234-xxx-yyy
         object_id = int(object_id.split("-", 1)[0])  # 1234-xxx-yyy
 
         return object_type, object_id
