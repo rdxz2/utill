@@ -4,7 +4,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "rdxz2-utill"
-version = "0.1.3"
+version = "0.1.4"
 authors = [
   { name="Richard Dharmawan", email="richard.dharmawan@gmail.com" },
 ]
@@ -36,6 +36,7 @@ utill = "utill.cmd.utill:main"
 
 [project.optional-dependencies]
 google-cloud = [
+  "google-api-python-client",
   "google-cloud-bigquery",
   "google-cloud-storage",
 ]
