@@ -1,7 +1,9 @@
 def _init(mode: str):
     from loguru import logger
 
-    from ..my_env import envs, init_pg_file, init_mb_file
+    from ..my_env import envs
+    from ..my_env import init_mb_file
+    from ..my_env import init_pg_file
 
     match mode:
         case "google-cloud":
@@ -24,7 +26,9 @@ def _list(module: str = None):
 
     from loguru import logger
 
-    from ..my_env import envs, PG_FILENAME, MB_FILENAME
+    from ..my_env import MB_FILENAME
+    from ..my_env import PG_FILENAME
+    from ..my_env import envs
     from ..my_string import mask
 
     match module:

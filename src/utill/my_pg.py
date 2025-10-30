@@ -1,14 +1,16 @@
-from .my_env import PG_FILENAME
-from .my_string import generate_random_string
-from .my_tunnel import establish_tunnel
-from loguru import logger
-from textwrap import dedent
 import csv
 import json
 import os
+from textwrap import dedent
+
 import psycopg
 import psycopg.conninfo
 import psycopg.rows
+from loguru import logger
+
+from .my_env import PG_FILENAME
+from .my_string import generate_random_string
+from .my_tunnel import establish_tunnel
 
 
 class PG:

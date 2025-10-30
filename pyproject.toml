@@ -4,7 +4,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "rdxz2-utill"
-version = "0.1.4"
+version = "0.1.5"
 authors = [
   { name="Richard Dharmawan", email="richard.dharmawan@gmail.com" },
 ]
@@ -52,3 +52,17 @@ where = ["src"]
 
 [tool.setuptools.package-data]
 utill = ["templates/*.json"]
+
+[tool.ruff]
+target-version = "py311"  # adjust to your Python version
+select = [
+  "F",  # pyflakes
+  "I",  # isort (import sorting)
+]
+ignore = []
+
+[tool.ruff.lint.isort]
+known-first-party = ["utill"]
+combine-as-imports = true
+force-single-line = true
+lines-after-imports = 2

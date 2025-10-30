@@ -8,9 +8,6 @@ class ByteSize:
     TB = 1_099_511_627_776
 
 
-from enum import StrEnum
-
-
 class HttpMethod(StrEnum):
     GET = "GET"
     POST = "POST"

@@ -1,22 +1,26 @@
-from . import my_csv
-from . import my_datetime
-from . import my_env
-from . import my_gcs
-from . import my_queue
-from . import my_string
-from . import my_xlsx
-from enum import StrEnum, Enum, auto
-from google.cloud import bigquery
-from google.cloud.exceptions import NotFound
-from humanize import precisedelta, naturalsize
-from loguru import logger
-import csv
 import datetime
 import math
 import os
 import shutil
 import textwrap
 import time
+from enum import Enum
+from enum import StrEnum
+from enum import auto
+
+from google.cloud import bigquery
+from google.cloud.exceptions import NotFound
+from humanize import naturalsize
+from humanize import precisedelta
+from loguru import logger
+
+from . import my_csv
+from . import my_datetime
+from . import my_env
+from . import my_gcs
+from . import my_string
+from . import my_xlsx
+
 
 PY_DATA_TYPE__BQ_DATA_TYPE = {
     int: "INTEGER",
@@ -195,7 +199,7 @@ class BQ:
                 f"  expiration_timestamp='{expiration_timestamp_utc.isoformat()}'"
             )
         if partition_by and require_partition_filter:
-            table_options.append(f"  require_partition_filter=TRUE")
+            table_options.append("  require_partition_filter=TRUE")
         if description:
             table_options.append(f"  description='{description}'")
 
@@ -280,9 +284,9 @@ class BQ:
             f"  uris=['{src_gcs_uri}']",
         ]
         if format == DataFileFormat.CSV:
-            load_options.append(f"  skip_leading_rows=1")
+            load_options.append("  skip_leading_rows=1")
             load_options.append(f"  field_delimiter='{field_delimiter}'")
-            load_options.append(f"  allow_quoted_newlines=true")
+            load_options.append("  allow_quoted_newlines=true")
         if compression:
             load_options.append(f"  compression='{compression}'")
         load_options_str = ",\n".join(load_options)
@@ -349,7 +353,7 @@ class BQ:
         options = [
             f"  uri='{dst_gcs_uri}'",
             f"  format='{format}'",
-            f"  overwrite=TRUE",
+            "  overwrite=TRUE",
         ]
         if format == DataFileFormat.CSV:
             options.append(

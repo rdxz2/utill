@@ -1,11 +1,12 @@
 import os
 import shutil
+from typing import Optional
 
 from loguru import logger
 from pydantic_settings import BaseSettings
-from typing import Optional
 
 from .my_input import ask_yes_no
+
 
 ENV_DIR = os.path.expanduser(os.path.join("~", ".utill"))
 ENV_FILE = os.path.join(ENV_DIR, "env")

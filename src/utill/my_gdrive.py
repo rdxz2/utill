@@ -1,11 +1,12 @@
+import enum
+import logging
+import os
+
 from google.auth import default
 from googleapiclient.discovery import build
 from googleapiclient.http import MediaFileUpload
 from googleapiclient.http import MediaIoBaseDownload
 from humanize import naturalsize
-import enum
-import logging
-import os
 
 
 log = logging.getLogger(__name__)

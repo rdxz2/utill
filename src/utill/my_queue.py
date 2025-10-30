@@ -1,7 +1,8 @@
-from loguru import logger
-from typing import Callable
 import concurrent.futures
 import queue
+from typing import Callable
+
+from loguru import logger
 
 
 class StreamingQ:
@@ -80,7 +81,7 @@ class StreamingQ:
                 # Wait for producer to complete
                 future_producer.result()
 
-            except Exception as e:
+            except Exception:
                 # Cancel producer if consumer fails
                 future_producer.cancel()
                 raise

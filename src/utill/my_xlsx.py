@@ -1,6 +1,6 @@
-import duckdb
 import multiprocessing
 
+import duckdb
 from loguru import logger
 
 

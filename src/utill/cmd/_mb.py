@@ -1,7 +1,8 @@
 
 def _jl_grant(emails: list[str], url: str, create_user_if_not_exists: bool = False):
-    from ..my_mb import MB
     from loguru import logger
+
+    from ..my_mb import MB
 
     mb = MB()
     all_users_by_email = {
