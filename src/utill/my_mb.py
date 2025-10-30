@@ -1,7 +1,10 @@
+import json
+
+import requests
+from loguru import logger
+
 from .my_const import HttpMethod
 from .my_env import MB_FILENAME
-from loguru import logger
-import json
 
 
 class MB:
@@ -11,14 +14,14 @@ class MB:
         self.base_url = config["base_url"]
         self.api_key = config["api_key"]
 
-        logger.info(f"✅ Initialized {self.base_url}")
+        logger.info(f"Metabase API initialized: {self.base_url}")
 
     # region Utility
 
     def http_request(self, method, url, **kwargs):
         url = f"{self.base_url}/{url.lstrip('/')}"
         kwargs.setdefault("headers", {"x-api-key": self.api_key})
-        return super().http_request(method, url, **kwargs)
+        return requests.request(method, url, **kwargs)
 
     def decode_collection_location_to_group(self, location: str):
         group_names = []
@@ -213,7 +216,7 @@ class MB:
 
         # Get latest revision
         graph = self.http_request(HttpMethod.GET, "api/collection/graph").json()
-        logger.debug(f'Latest revision: {graph["revision"]}')
+        logger.debug(f"Latest revision: {graph['revision']}")
 
         # Update revision grpah
         self.http_request(
@@ -247,9 +250,7 @@ class MB:
         url = (
             str(url).removeprefix("http://").removeprefix("https://")
         )  # https://somesite/question/1234-xxx-yyy
-        _, object_type, object_id = url.split(
-            "/", 3
-        )  # somesite/question/1234-xxx-yyy
+        _, object_type, object_id = url.split("/", 3)  # somesite/question/1234-xxx-yyy
         object_id = int(object_id.split("-", 1)[0])  # 1234-xxx-yyy
 
         return object_type, object_id
@@ -257,6 +258,22 @@ class MB:
     # endregion
 
     # region Final function
+
+    def disable_users_by_email(self, emails: list[str]):
+        all_usrs_by_email = {
+            user["email"]: user for user in self.get_all_users(all=True)
+        }
+
+        for email in emails:
+            if email not in all_usrs_by_email:
+                logger.warning(f"⚠️ User {email} not found, skipping")
+                continue
+            user = all_usrs_by_email[email]
+            if not user["is_active"]:
+                logger.warning(f"⚠️ User {email} already disabled, skipping")
+                continue
+            self.disable_user(user["id"])
+            logger.info(f"User {email} disabled")
 
     def grant_metabase_access(
         self,
@@ -274,7 +291,7 @@ class MB:
         object_type, object_id = self.get_object_info_from_url(metabase_url)
         collection_id: int | None = None
         collection_location: str | None = None
-        match (object_type):
+        match object_type:
             case "question":
                 question = self.get_question(object_id)
                 collection_id = int(question["collection"]["id"])
