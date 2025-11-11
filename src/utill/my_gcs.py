@@ -5,10 +5,10 @@ from loguru import logger
 
 from .my_datetime import get_current_datetime_str
 from .my_env import envs
+from .my_string import generate_random_string
 
 
 class GCS:
-
     def __init__(self, bucket: str | None = None, project_id: str | None = None):
         if project_id is None and envs.GCP_PROJECT_ID is None:
             logger.warning("Using ADC for GCS authentication")
@@ -98,7 +98,7 @@ class GCS:
         """
         Builds a temporary directory path in the GCS bucket.
         """
-        return f"{prefix}/{get_current_datetime_str()}"
+        return f"{prefix}/{get_current_datetime_str()}_{generate_random_string(alphanum=True)}"
 
     def close(self):
         self.client.close()
