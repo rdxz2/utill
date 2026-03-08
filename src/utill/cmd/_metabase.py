@@ -1,13 +1,10 @@
-
 def _jl_grant(emails: list[str], url: str, create_user_if_not_exists: bool = False):
     from loguru import logger
 
-    from ..my_mb import MB
+    from ..metabase import MB
 
     mb = MB()
-    all_users_by_email = {
-        user["email"]: user for user in mb.get_all_users(all=True)
-    }
+    all_users_by_email = {user["email"]: user for user in mb.get_all_users(all=True)}
     all_groups_by_name = {x["name"]: x for x in mb.get_all_groups()}
 
     # Get information for this object
@@ -15,7 +12,7 @@ def _jl_grant(emails: list[str], url: str, create_user_if_not_exists: bool = Fal
     object_type, object_id = mb.get_object_info_from_url(url)
     collection_id: int | None = None
     collection_location: str | None = None
-    match (object_type):
+    match object_type:
         case "question":
             question = mb.get_question(object_id)
             collection_id = int(question["collection"]["id"])
@@ -35,9 +32,7 @@ def _jl_grant(emails: list[str], url: str, create_user_if_not_exists: bool = Fal
                 collection["collection"]["id"]
             )
         case _:
-            raise ValueError(
-                f"Unknown object type {object_type} from {url}"
-            )
+            raise ValueError(f"Unknown object type {object_type} from {url}")
     logger.info(
         f'Object found: type "{object_type}", ID {object_id}, collection ID {collection_id}'
     )
@@ -118,7 +113,7 @@ def _jl_grant(emails: list[str], url: str, create_user_if_not_exists: bool = Fal
 
 
 def _copy_permissions(src_email: str, dst_emails: list[str]):
-    from ..my_mb import MB
+    from ..metabase import MB
 
     mb = MB()
     for dst_email in dst_emails:
@@ -126,7 +121,7 @@ def _copy_permissions(src_email: str, dst_emails: list[str]):
 
 
 def _reset_password(emails: list[str]):
-    from ..my_mb import MB
+    from ..metabase import MB
 
     mb = MB()
     for email in emails:
@@ -134,7 +129,7 @@ def _reset_password(emails: list[str]):
 
 
 def _disable_user(emails: list[str]):
-    from ..my_mb import MB
+    from ..metabase import MB
 
     mb = MB()
     for email in emails:

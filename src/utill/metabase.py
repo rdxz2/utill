@@ -3,8 +3,8 @@ import json
 import requests
 from loguru import logger
 
-from .my_const import HttpMethod
-from .my_env import MB_FILENAME
+from .constants import HttpMethod
+from .settings import MB_FILENAME
 
 
 class MB:

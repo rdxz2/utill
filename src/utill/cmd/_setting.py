@@ -1,9 +1,9 @@
 def _init(mode: str):
     from loguru import logger
 
-    from ..my_env import envs
-    from ..my_env import init_mb_file
-    from ..my_env import init_pg_file
+    from ..settings import envs
+    from ..settings import init_mb_file
+    from ..settings import init_pg_file
 
     match mode:
         case "google-cloud":
@@ -26,10 +26,10 @@ def _list(module: str = None):
 
     from loguru import logger
 
-    from ..my_env import MB_FILENAME
-    from ..my_env import PG_FILENAME
-    from ..my_env import envs
-    from ..my_string import mask
+    from ..settings import MB_FILENAME
+    from ..settings import PG_FILENAME
+    from ..settings import envs
+    from ..string import mask
 
     match module:
         case "postgresql":
@@ -41,7 +41,7 @@ def _list(module: str = None):
             for k, v in config.items():
                 print(k)
                 for k2, v2 in v.items():
-                    print(f'\t{k2} = {mask(str(v2)) if k2 in ("password", ) else v2}')
+                    print(f"\t{k2} = {mask(str(v2)) if k2 in ('password',) else v2}")
 
         case "metabase":
             if not os.path.exists(MB_FILENAME):
@@ -50,14 +50,14 @@ def _list(module: str = None):
 
             config: dict = json.loads(open(MB_FILENAME, "r").read())
             for k, v in config.items():
-                print(f'{k} = {mask(str(v)) if k in ("api_key", ) else v}')
+                print(f"{k} = {mask(str(v)) if k in ('api_key',) else v}")
         case _:
             for env in envs.model_fields:
                 print(f"{env} = {getattr(envs, env)}")
 
 
 def _set(vars: list[tuple[str, str]]):
-    from ..my_env import envs
+    from ..settings import envs
 
     for k, v in vars:
         setattr(envs, k, v)

@@ -5,7 +5,7 @@ from typing import Optional
 from loguru import logger
 from pydantic_settings import BaseSettings
 
-from .my_input import ask_yes_no
+from .input import ask_yes_no
 
 
 ENV_DIR = os.path.expanduser(os.path.join("~", ".utill"))
@@ -52,7 +52,6 @@ def init_mb_file():
 
 
 class Envs(BaseSettings):
-
     GCP_PROJECT_ID: Optional[str] = None
     GCP_REGION: Optional[str] = None
     GCS_BUCKET: Optional[str] = None

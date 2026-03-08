@@ -5,8 +5,8 @@ import sys
 
 from loguru import logger
 
-from .my_const import ByteSize
-from .my_file import decompress
+from .constants import ByteSize
+from .file import decompress
 
 
 def read_header(filename: str):
@@ -33,7 +33,7 @@ def compress(
 ):
     src_filename = os.path.expanduser(src_filename)
     current_size = 0
-    dst_filename = f'{src_filename}_part{str(file_count).rjust(6, "0")}.gz'
+    dst_filename = f"{src_filename}_part{str(file_count).rjust(6, '0')}.gz"
     os.remove(dst_filename) if os.path.exists(dst_filename) else None
     logger.debug(f"📄 Compress csv {src_filename} --> {dst_filename}")
     gz = gzip.open(dst_filename, "wt")

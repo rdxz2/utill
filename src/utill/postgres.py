@@ -8,9 +8,9 @@ import psycopg.conninfo
 import psycopg.rows
 from loguru import logger
 
-from .my_env import PG_FILENAME
-from .my_string import generate_random_string
-from .my_tunnel import establish_tunnel
+from .settings import PG_FILENAME
+from .string import generate_random_string
+from .tunnel import establish_tunnel
 
 
 class PG:

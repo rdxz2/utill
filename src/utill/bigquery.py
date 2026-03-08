@@ -16,12 +16,12 @@ from humanize import naturalsize
 from humanize import precisedelta
 from loguru import logger
 
-from . import my_csv
-from . import my_datetime
-from . import my_env
-from . import my_gcs
-from . import my_string
-from . import my_xlsx
+from . import csv
+from . import dttm
+from . import gcs
+from . import settings
+from . import string
+from . import xlsx
 
 
 PY_DATA_TYPE__BQ_DATA_TYPE = {
@@ -79,15 +79,15 @@ class Dtype:
 
 class BQ:
     def __init__(self, location: str | None = None, project_id: str = None):
-        if project_id is None and my_env.envs.GCP_PROJECT_ID is None:
+        if project_id is None and settings.envs.GCP_PROJECT_ID is None:
             logger.warning("Using ADC for BigQuery authentication")
 
         # if location is None and my_env.envs.GCP_REGION is None:
         #     raise ValueError('GCP region must be set in environment variables.')
 
         self.client = bigquery.Client(
-            project=project_id or my_env.envs.GCP_PROJECT_ID,
-            location=location or my_env.envs.GCP_REGION,
+            project=project_id or settings.envs.GCP_PROJECT_ID,
+            location=location or settings.envs.GCP_REGION,
         )
         logger.debug(f"BQ client open, project: {self.client.project}")
 
@@ -432,8 +432,8 @@ class BQ:
 
         # Upload to GCS
         # TODO: Re-implement the producer-consumer model to upload multiple files
-        gcs = my_gcs.GCS(bucket=gcs_bucket, project_id=self.client.project)
-        dst_blobpath = f"tmp/my_bq/{my_datetime.get_current_datetime_str()}/{my_string.replace_nonnumeric(src_filename, '_').lower()}{src_fileextension}"
+        gcs = gcs.GCS(bucket=gcs_bucket, project_id=self.client.project)
+        dst_blobpath = f"tmp/my_bq/{dttm.get_current_datetime_str()}/{string.replace_nonnumeric(src_filename, '_').lower()}{src_fileextension}"
         gcs.upload(src_filepath, dst_blobpath)
 
         # Load to BQ
@@ -466,7 +466,7 @@ class BQ:
             raise ValueError("Destination filename must ends with .csv")
 
         # Init
-        gcs = my_gcs.GCS(bucket=gcs_bucket, project_id=self.client.project)
+        gcs = gcs.GCS(bucket=gcs_bucket, project_id=self.client.project)
 
         # Generic function to export-download-combine csv file from BQ->GCS->local
         def _export_download_combine(
@@ -476,7 +476,7 @@ class BQ:
             query_parameters: dict = {},
         ):
             # Init tmp directory
-            tmp_dirname = f"/tmp/my_bq_{my_datetime.get_current_datetime_str()}"
+            tmp_dirname = f"/tmp/my_bq_{dttm.get_current_datetime_str()}"
             if os.path.exists(tmp_dirname):
                 shutil.rmtree(tmp_dirname, ignore_errors=True)
             os.makedirs(tmp_dirname, exist_ok=True)
@@ -504,9 +504,7 @@ class BQ:
                     local_tmp_filepaths.append(local_tmp_filepath)
 
                 # Combine downloaded files
-                my_csv.combine(
-                    local_tmp_filepaths, dst_filepath, gzip=True, delete=True
-                )
+                csv.combine(local_tmp_filepaths, dst_filepath, gzip=True, delete=True)
             except:
                 raise
             finally:
@@ -635,7 +633,7 @@ class BQ:
                     f"SELECT * EXCEPT(_rn) FROM `{table_name_tmp}` WHERE _rn BETWEEN {(part * xlsx_row_limit) + 1} AND {(part + 1) * xlsx_row_limit}",
                     f"{file_path_tmp}{os.sep}",
                 )
-                my_xlsx.csv_to_xlsx(file_path_tmp_csv, f"{file_path_tmp}.xlsx")
+                xlsx.csv_to_xlsx(file_path_tmp_csv, f"{file_path_tmp}.xlsx")
                 os.remove(file_path_tmp_csv)
         except Exception as e:
             raise e

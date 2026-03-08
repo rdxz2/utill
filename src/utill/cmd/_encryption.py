@@ -15,7 +15,7 @@ def _encrypt(src: str, password: str, output: str = None, force: bool = False):
             raise ValueError(f"Source file is a directory: {src}")
 
         # Do encryption
-        from ..my_encryption import encrypt_file
+        from ..encryption import encrypt_file
 
         if output:
             encrypt_file(
@@ -25,6 +25,6 @@ def _encrypt(src: str, password: str, output: str = None, force: bool = False):
             print(encrypt_file(path_src.as_posix(), password))
     else:
         # Do encryption
-        from ..my_encryption import encrypt_string
+        from ..encryption import encrypt_string
 
         print(encrypt_string(src, password))

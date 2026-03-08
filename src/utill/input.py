@@ -1,4 +1,4 @@
-from .my_style import italic
+from .style import italic
 
 
 def ask_yes_no(

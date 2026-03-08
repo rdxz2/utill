@@ -3,9 +3,9 @@ import os
 from google.cloud import storage
 from loguru import logger
 
-from .my_datetime import get_current_datetime_str
-from .my_env import envs
-from .my_string import generate_random_string
+from .dttm import get_current_datetime_str
+from .settings import envs
+from .string import generate_random_string
 
 
 class GCS:
