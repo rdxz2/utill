@@ -7,6 +7,8 @@ import time
 from enum import Enum
 from enum import StrEnum
 from enum import auto
+from threading import Lock
+from typing import cast
 
 from google.cloud import bigquery
 from google.cloud.exceptions import NotFound
@@ -231,7 +233,7 @@ class BQ:
             ]
             if schema:
                 schema_str = ",\n".join(
-                    [f'  {column["name"]} {column["data_type"]}' for column in schema]
+                    [f"  {column['name']} {column['data_type']}" for column in schema]
                 )
                 query_parts.append(f"(\n{schema_str}\n)")
             if partition_by:
@@ -294,10 +296,10 @@ class BQ:
         # Construct beautiful query string
         logger.debug("Constructing LOAD query ...")
         schema_str = ",\n".join(
-            [f'  {column["name"]} {column["data_type"]}' for column in schema]
+            [f"  {column['name']} {column['data_type']}" for column in schema]
         )
         query_parts = [
-            f'LOAD DATA {"OVERWRITE" if load_strategy == LoadStrategy.OVERWRITE else "INTO"} `{dst_table_fqn}` (\n{schema_str}\n)'
+            f"LOAD DATA {'OVERWRITE' if load_strategy == LoadStrategy.OVERWRITE else 'INTO'} `{dst_table_fqn}` (\n{schema_str}\n)"
         ]
         if partition_by:
             query_parts.append(f"PARTITION BY {partition_by}")
@@ -361,7 +363,7 @@ class BQ:
             )
             if header:
                 options.append(
-                    f'  header={"true" if header else "false"}',
+                    f"  header={'true' if header else 'false'}",
                 )
         if compression:
             options.append(f"  compression='{compression}'")
@@ -431,7 +433,7 @@ class BQ:
         # Upload to GCS
         # TODO: Re-implement the producer-consumer model to upload multiple files
         gcs = my_gcs.GCS(bucket=gcs_bucket, project_id=self.client.project)
-        dst_blobpath = f'tmp/my_bq/{my_datetime.get_current_datetime_str()}/{my_string.replace_nonnumeric(src_filename, "_").lower()}{src_fileextension}'
+        dst_blobpath = f"tmp/my_bq/{my_datetime.get_current_datetime_str()}/{my_string.replace_nonnumeric(src_filename, '_').lower()}{src_fileextension}"
         gcs.upload(src_filepath, dst_blobpath)
 
         # Load to BQ
@@ -545,7 +547,7 @@ class BQ:
                 dst_filepaths = []
                 for part in range(parts):
                     dst_filepath_part = (
-                        f'{dst_filepath.removesuffix(".csv")}_{part + 1:06}.csv'
+                        f"{dst_filepath.removesuffix('.csv')}_{part + 1:06}.csv"
                     )
                     _export_download_combine(
                         f"SELECT * EXCEPT(_rn) FROM `{tmp_table_fqn_rn}` WHERE _rn BETWEEN {(part * csv_row_limit) + 1} AND {(part + 1) * csv_row_limit} ORDER BY _rn",
@@ -724,3 +726,28 @@ class BQ:
     def close(self):
         self.client.close()
         logger.debug("BQ client close")
+
+
+class _LazyBQ:
+    def __init__(self):
+        self._instance: BQ | None = None
+        self._lock = Lock()
+
+    def _get_instance(self) -> BQ:
+        if self._instance is None:
+            # Ensure singleton initialization is safe when accessed concurrently.
+            with self._lock:
+                if self._instance is None:
+                    self._instance = BQ()
+        return self._instance
+
+    def __getattr__(self, name: str):
+        return getattr(self._get_instance(), name)
+
+    def close(self):
+        if self._instance is not None:
+            self._instance.close()
+            self._instance = None
+
+
+bq: BQ = cast(BQ, _LazyBQ())
