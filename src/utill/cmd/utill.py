@@ -6,40 +6,40 @@ def main():
     pass
 
 
-# MARK: Conf
+# MARK: Settings
 
 
-@main.group("conf", help="Configure this library")
-def main__conf():
+@main.group("setting", help="Configure this library")
+def main__setting():
     pass
 
 
-@main__conf.command("init", help="Initialize env files")
+@main__setting.command("init", help="Initialize env files")
 @click.argument("mode", type=click.Choice(["google-cloud", "postgresql", "metabase"]))
-def main__conf__init(**kwargs):
+def main__setting__init(**kwargs):
     from ._setting import _init
 
     _init(**kwargs)
 
 
-@main__conf.command("list", help="List all configs")
+@main__setting.command("list", help="List all configs")
 @click.option(
     "-m",
     "module",
     type=click.Choice(["postgresql", "metabase"]),
     help="List config for a specific modules",
 )
-def main__conf__list(**kwargs):
+def main__setting__list(**kwargs):
     from ._setting import _list
 
     _list(**kwargs)
 
 
-@main__conf.command("set", help="Set configuration variables")
+@main__setting.command("set", help="Set configuration variables")
 @click.option(
     "-e", "vars", type=(str, str), multiple=True, required=True, help="Variables -> K V"
 )
-def main__conf__set(**kwargs):
+def main__setting__set(**kwargs):
     from ._setting import _set
 
     _set(**kwargs)
