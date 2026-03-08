@@ -1,0 +1,17 @@
+{
+  "[python]": {
+    "editor.defaultFormatter": "charliermarsh.ruff",
+    "editor.formatOnSave": true,
+    "editor.codeActionsOnSave": {
+      "source.fixAll.ruff": "explicit",
+      "source.organizeImports.ruff": "explicit"
+    }
+  },
+  "github.copilot.chat.commitMessageGeneration.instructions": [
+    {
+      "text": "Always starts with commit category e.g. feat: Add new feature, fix: Bug fix, chore: Maintenance, etc. Always generate a short sentence. Avoid generic messages like 'Update code' or 'Fix bug'."
+    }
+  ],
+  "ruff.importStrategy": "fromEnvironment",
+  "chat.customAgentInSubagent.enabled": true,
+}
