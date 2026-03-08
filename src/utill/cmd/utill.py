@@ -17,7 +17,7 @@ def main__conf():
 @main__conf.command("init", help="Initialize env files")
 @click.argument("mode", type=click.Choice(["google-cloud", "postgresql", "metabase"]))
 def main__conf__init(**kwargs):
-    from ._conf import _init
+    from ._setting import _init
 
     _init(**kwargs)
 
@@ -30,7 +30,7 @@ def main__conf__init(**kwargs):
     help="List config for a specific modules",
 )
 def main__conf__list(**kwargs):
-    from ._conf import _list
+    from ._setting import _list
 
     _list(**kwargs)
 
@@ -40,7 +40,7 @@ def main__conf__list(**kwargs):
     "-e", "vars", type=(str, str), multiple=True, required=True, help="Variables -> K V"
 )
 def main__conf__set(**kwargs):
-    from ._conf import _set
+    from ._setting import _set
 
     _set(**kwargs)
 
@@ -66,7 +66,7 @@ def main__mb():
     help="Create user if not exists, also reactivate user if it's already exists default: False",
 )
 def main__mb__grant(**kwargs):
-    from ._mb import _jl_grant
+    from ._metabase import _jl_grant
 
     _jl_grant(**kwargs)
 
@@ -77,7 +77,7 @@ def main__mb__grant(**kwargs):
 @click.argument("src_email", type=str)
 @click.argument("dst_emails", type=str, nargs=-1)
 def main__mb__copy_permissions(**kwargs):
-    from ._mb import _copy_permissions
+    from ._metabase import _copy_permissions
 
     _copy_permissions(**kwargs)
 
@@ -93,7 +93,7 @@ def main__mb__copy_permissions(**kwargs):
     help="User emails",
 )
 def main__mb__reset_password(**kwargs):
-    from ._mb import _reset_password
+    from ._metabase import _reset_password
 
     _reset_password(**kwargs)
 
@@ -109,7 +109,7 @@ def main__mb__reset_password(**kwargs):
     help="User emails",
 )
 def main__mb__disable_user(**kwargs):
-    from ._mb import _disable_user
+    from ._metabase import _disable_user
 
     _disable_user(**kwargs)
 
@@ -129,7 +129,7 @@ def main__pg():
 @click.argument("dst_table", type=str)
 @click.option("-c", "--columns", type=str, default="*", help="Columns to copy")
 def main__pg__pg_to_pg(**kwargs):
-    from ._pg import _pg_to_pg
+    from ._postgres import _pg_to_pg
 
     _pg_to_pg(**kwargs)
 
@@ -139,7 +139,7 @@ def main__pg__pg_to_pg(**kwargs):
 @click.argument("src_filename", type=click.Path())
 @click.argument("dst_table", type=str)
 def main__pg__upload_csv(**kwargs):
-    from ._pg import _upload_csv
+    from ._postgres import _upload_csv
 
     _upload_csv(**kwargs)
 
@@ -169,7 +169,7 @@ def main__bq():
 )
 @click.option("--project", type=str, help="Billing project")
 def main__bq__upload_csv(**kwargs):
-    from ._bq import _upload_csv
+    from ._bigquery import _upload_csv
 
     _upload_csv(**kwargs)
 
@@ -179,7 +179,7 @@ def main__bq__upload_csv(**kwargs):
 @click.argument("dst_filename", type=str)
 @click.option("--project", type=str, help="Billing project")
 def main__bq__download_table(**kwargs):
-    from ._bq import _download_table
+    from ._bigquery import _download_table
 
     _download_table(**kwargs)
 
@@ -196,7 +196,7 @@ def main__enc():
 @click.argument("src", type=str)
 @click.option("-p", "password", type=str, required=True, help="The password")
 def main__enc__encrypt(**kwargs):
-    from ._enc import _encrypt
+    from ._encryption import _encrypt
 
     _encrypt(**kwargs)
 
