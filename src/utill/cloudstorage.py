@@ -1,4 +1,6 @@
 import os
+from threading import Lock
+from typing import cast
 
 from google.cloud import storage
 from loguru import logger
@@ -103,3 +105,28 @@ class GCS:
     def close(self):
         self.client.close()
         logger.debug("GCS client closed")
+
+
+class _LazyGCS:
+    def __init__(self):
+        self._instance: GCS | None = None
+        self._lock = Lock()
+
+    def _get_instance(self) -> GCS:
+        if self._instance is None:
+            # Keep initialization safe when accessed by multiple threads.
+            with self._lock:
+                if self._instance is None:
+                    self._instance = GCS()
+        return self._instance
+
+    def __getattr__(self, name: str):
+        return getattr(self._get_instance(), name)
+
+    def close(self):
+        if self._instance is not None:
+            self._instance.close()
+            self._instance = None
+
+
+gcs: GCS = cast(GCS, _LazyGCS())

@@ -16,6 +16,7 @@ from humanize import naturalsize
 from humanize import precisedelta
 from loguru import logger
 
+from . import cloudstorage
 from . import csv
 from . import dttm
 from . import settings
@@ -431,14 +432,14 @@ class BQ:
 
         # Upload to GCS
         # TODO: Re-implement the producer-consumer model to upload multiple files
-        gcs = gcs.GCS(bucket=gcs_bucket, project_id=self.client.project)
+        gcs_client = cloudstorage.GCS(bucket=gcs_bucket, project_id=self.client.project)
         dst_blobpath = f"tmp/my_bq/{dttm.get_current_datetime_str()}/{string.replace_nonnumeric(src_filename, '_').lower()}{src_fileextension}"
-        gcs.upload(src_filepath, dst_blobpath)
+        gcs_client.upload(src_filepath, dst_blobpath)
 
         # Load to BQ
         try:
             self.load_data(
-                f"gs://{gcs.bucket.name}/{dst_blobpath}",
+                f"gs://{gcs_client.bucket.name}/{dst_blobpath}",
                 dst_table_fqn,
                 schema=schema,
                 partition_by=partition_by,
@@ -450,7 +451,7 @@ class BQ:
         except:
             raise
         finally:
-            gcs.delete_blob(dst_blobpath)
+            gcs_client.delete_blob(dst_blobpath)
 
     def download_csv(
         self,
@@ -465,7 +466,7 @@ class BQ:
             raise ValueError("Destination filename must ends with .csv")
 
         # Init
-        gcs = gcs.GCS(bucket=gcs_bucket, project_id=self.client.project)
+        gcs_client = cloudstorage.GCS(bucket=gcs_bucket, project_id=self.client.project)
 
         # Generic function to export-download-combine csv file from BQ->GCS->local
         def _export_download_combine(
@@ -483,7 +484,7 @@ class BQ:
 
             try:
                 # Export to GCS
-                dst_gcs_uri = f"gs://{gcs.bucket.name}/{dst_gcs_prefix}/*.csv.gz"
+                dst_gcs_uri = f"gs://{gcs_client.bucket.name}/{dst_gcs_prefix}/*.csv.gz"
                 self.export_data(
                     query,
                     dst_gcs_uri,
@@ -494,11 +495,11 @@ class BQ:
 
                 # Download from GCS
                 local_tmp_filepaths = []
-                for tmp_blobs in gcs.list_blobs(dst_gcs_prefix):
+                for tmp_blobs in gcs_client.list_blobs(dst_gcs_prefix):
                     local_tmp_filepath = os.path.join(
                         tmp_dirname, tmp_blobs.name.split("/")[-1]
                     )
-                    gcs.download(tmp_blobs, local_tmp_filepath, move=True)
+                    gcs_client.download(tmp_blobs, local_tmp_filepath, move=True)
                     # logger.debug(f'Downloaded {tmp_blobs.name} to {local_tmp_filepath}')
                     local_tmp_filepaths.append(local_tmp_filepath)
 
@@ -509,8 +510,8 @@ class BQ:
             finally:
                 shutil.rmtree(tmp_dirname, ignore_errors=True)  # Remove local folder
                 [
-                    gcs.delete_blob(blob_filepath)
-                    for blob_filepath in gcs.list_blobs(dst_gcs_prefix)
+                    gcs_client.delete_blob(blob_filepath)
+                    for blob_filepath in gcs_client.list_blobs(dst_gcs_prefix)
                 ]  # Remove temporary GCS files
 
             logger.info(f"Export-download-combine done: {dst_filepath}")
@@ -548,7 +549,7 @@ class BQ:
                     )
                     _export_download_combine(
                         f"SELECT * EXCEPT(_rn) FROM `{tmp_table_fqn_rn}` WHERE _rn BETWEEN {(part * csv_row_limit) + 1} AND {(part + 1) * csv_row_limit} ORDER BY _rn",
-                        dst_gcs_prefix=gcs.build_tmp_dirpath(),
+                        dst_gcs_prefix=gcs_client.build_tmp_dirpath(),
                         dst_filepath=dst_filepath_part,
                     )
                     dst_filepaths.append(dst_filepath_part)
@@ -566,7 +567,7 @@ class BQ:
         else:
             _export_download_combine(
                 query,
-                gcs.build_tmp_dirpath(),
+                gcs_client.build_tmp_dirpath(),
                 dst_filepath,
                 query_parameters=query_parameters,
             )
