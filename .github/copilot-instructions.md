@@ -1,6 +1,6 @@
 # Repository Instructions
 
-This repository is a Python utility library that wraps multiple services (for example BigQuery, PostgreSQL, Metabase, and Google Drive) and also provides a CLI.
+This repository is a Python utility library that wraps multiple services (for example BigQuery, PostgreSQL, Metabase, and Google Drive) and also exposes a CLI.
 
 Key locations:
 
@@ -106,6 +106,10 @@ uv run ruff check . --fix
 ```
 
 There is currently no dedicated test suite in CI, so include manual verification notes in your PR (for example: commands run, environments used, and observed output).
+
+# Agent Skills
+
+- For lazy-loaded reusable module objects (for example `bq` and `gcs`), follow the implementation rules in `.github/skills/lazy-loading/SKILL.md`.
 
 ## Commit and PR Guidelines
 
