@@ -1,14 +1,15 @@
 import os
 
-from cryptography.fernet import Fernet
-from loguru import logger
+from ._lazy_import import import_attr_cached
+from ._lazy_logger import logger
 
 
 def __fernet_encrypt_or_decrypt(encrypt: bool, string: str, password: str):
+    fernet = import_attr_cached("cryptography.fernet", "Fernet")
     return (
-        Fernet(password).encrypt(string.encode())
+        fernet(password).encrypt(string.encode())
         if encrypt
-        else Fernet(password).encrypt(string.encode())
+        else fernet(password).encrypt(string.encode())
     )
 
 

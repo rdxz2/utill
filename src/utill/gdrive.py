@@ -2,11 +2,7 @@ import enum
 import logging
 import os
 
-from google.auth import default
-from googleapiclient.discovery import build
-from googleapiclient.http import MediaFileUpload
-from googleapiclient.http import MediaIoBaseDownload
-from humanize import naturalsize
+from ._lazy_import import import_attr_cached
 
 
 log = logging.getLogger(__name__)
@@ -26,7 +22,10 @@ class GDrive:
     """
 
     def __init__(self):
-        credentials, project = default(
+        google_default = import_attr_cached("google.auth", "default")
+        build = import_attr_cached("googleapiclient.discovery", "build")
+
+        credentials, project = google_default(
             scopes=[
                 "https://www.googleapis.com/auth/drive",
                 "https://www.googleapis.com/auth/drive.file",
@@ -135,7 +134,12 @@ class GDrive:
     def upload_file(
         self, src_filepath: str, folder_id: str, mime_type: str | None = None
     ):
-        media = MediaFileUpload(src_filepath, mimetype=mime_type, resumable=True)
+        media_file_upload = import_attr_cached(
+            "googleapiclient.http", "MediaFileUpload"
+        )
+        naturalsize = import_attr_cached("humanize", "naturalsize")
+
+        media = media_file_upload(src_filepath, mimetype=mime_type, resumable=True)
         request = self.connection.files().create(
             body={"name": os.path.basename(src_filepath), "parents": [folder_id]},
             media_body=media,
@@ -152,13 +156,18 @@ class GDrive:
         )
 
     def download_gdrive_file(self, file_id: str, dst_filepath: str):
+        media_io_base_download = import_attr_cached(
+            "googleapiclient.http", "MediaIoBaseDownload"
+        )
+        naturalsize = import_attr_cached("humanize", "naturalsize")
+
         request = self.connection.files().get_media(
             fileId=file_id, supportsAllDrives=True
         )
 
         # Stream directly to disk
         with open(dst_filepath, "wb") as f:
-            downloader = MediaIoBaseDownload(f, request)
+            downloader = media_io_base_download(f, request)
             done = False
             while not done:
                 _, done = downloader.next_chunk()

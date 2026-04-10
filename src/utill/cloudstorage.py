@@ -1,17 +1,24 @@
+from __future__ import annotations
+
 import os
 from threading import Lock
+from typing import TYPE_CHECKING
 from typing import cast
 
-from google.cloud import storage
-from loguru import logger
+from ._lazy_import import import_module_cached
+from ._lazy_logger import logger
 
-from .dttm import get_current_datetime_str
-from .settings import envs
-from .string import generate_random_string
+
+if TYPE_CHECKING:
+    from google.cloud import storage as storage_types
 
 
 class GCS:
     def __init__(self, bucket: str | None = None, project_id: str | None = None):
+        from .settings import envs
+
+        storage = import_module_cached("google.cloud.storage")
+
         if project_id is None and envs.GCP_PROJECT_ID is None:
             logger.warning("Using ADC for GCS authentication")
 
@@ -26,13 +33,13 @@ class GCS:
             f"GCS client open, project: {self.client.project}, bucket: {self.bucket.name}"
         )
 
-    def get_blob(self, blobpath: str) -> storage.Blob:
+    def get_blob(self, blobpath: str) -> storage_types.Blob:
         return self.bucket.blob(blobpath)
 
-    def list_blobs(self, prefix: str) -> list[storage.Blob]:
+    def list_blobs(self, prefix: str) -> list[storage_types.Blob]:
         return self.bucket.list_blobs(prefix=prefix)
 
-    def delete_blob(self, blobpath: str | storage.Blob) -> storage.Blob:
+    def delete_blob(self, blobpath: str | storage_types.Blob) -> storage_types.Blob:
         blob = self.get_blob(blobpath) if isinstance(blobpath, str) else blobpath
         return blob.delete()
 
@@ -76,7 +83,10 @@ class GCS:
             )
 
     def download(
-        self, src_blobpath: str | storage.Blob, dst_filepath: str, move: bool = False
+        self,
+        src_blobpath: str | storage_types.Blob,
+        dst_filepath: str,
+        move: bool = False,
     ):
         blob = (
             self.get_blob(src_blobpath)
@@ -100,6 +110,9 @@ class GCS:
         """
         Builds a temporary directory path in the GCS bucket.
         """
+        from .dttm import get_current_datetime_str
+        from .string import generate_random_string
+
         return f"{prefix}/{get_current_datetime_str()}_{generate_random_string(alphanum=True)}"
 
     def close(self):

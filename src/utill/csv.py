@@ -3,8 +3,7 @@ import gzip
 import os
 import sys
 
-from loguru import logger
-
+from ._lazy_logger import logger
 from .constants import ByteSize
 from .file import decompress
 

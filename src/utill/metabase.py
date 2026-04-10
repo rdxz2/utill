@@ -1,14 +1,17 @@
 import json
 
-import requests
-from loguru import logger
-
+from ._lazy_import import import_module_cached
+from ._lazy_logger import logger
 from .constants import HttpMethod
-from .settings import MB_FILENAME
 
 
 class MB:
-    def __init__(self, config_source: str = MB_FILENAME) -> None:
+    def __init__(self, config_source: str | None = None) -> None:
+        if config_source is None:
+            from .settings import MB_FILENAME
+
+            config_source = MB_FILENAME
+
         config = json.loads(open(config_source, "r").read())
 
         self.base_url = config["base_url"]
@@ -19,6 +22,7 @@ class MB:
     # region Utility
 
     def http_request(self, method, url, **kwargs):
+        requests = import_module_cached("requests")
         url = f"{self.base_url}/{url.lstrip('/')}"
         kwargs.setdefault("headers", {"x-api-key": self.api_key})
         return requests.request(method, url, **kwargs)
@@ -150,6 +154,12 @@ class MB:
 
     def get_dashboard(self, id: int) -> None:
         return self.http_request(HttpMethod.GET, f"api/dashboard/{id}").json()
+
+    def archive_dashboard(self, id: int) -> None:
+        self.http_request(
+            HttpMethod.PUT, f"api/dashboard/{id}", json={"archived": True}
+        )
+        logger.debug(f"✅ Dashboard {id} archived")
 
     # endregion
 

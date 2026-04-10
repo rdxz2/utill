@@ -2,7 +2,7 @@ import concurrent.futures
 import queue
 from typing import Callable
 
-from loguru import logger
+from ._lazy_logger import logger
 
 
 class StreamingQ:

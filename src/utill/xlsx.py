@@ -1,10 +1,11 @@
 import multiprocessing
 
-import duckdb
-from loguru import logger
+from ._lazy_import import import_module_cached
+from ._lazy_logger import logger
 
 
 def xlsx_to_csv(filename: str, sheet: str):
+    duckdb = import_module_cached("duckdb")
     con = duckdb.connect()
     return (
         con.execute("install spatial;")
@@ -16,6 +17,7 @@ def xlsx_to_csv(filename: str, sheet: str):
 
 def csv_to_xlsx(filename: str, output_file_path: str):
     logger.info(f"Converting csv '{filename}' into xlsx '{output_file_path}' ...")
+    duckdb = import_module_cached("duckdb")
     con = duckdb.connect()
     con.execute("install spatial;").execute("load spatial;").execute(
         f"set threads to {multiprocessing.cpu_count()};"

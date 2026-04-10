@@ -1,3 +1,5 @@
+from __future__ import annotations
+
 import datetime
 import math
 import os
@@ -7,21 +9,28 @@ import time
 from enum import Enum
 from enum import StrEnum
 from enum import auto
+from functools import lru_cache
 from threading import Lock
+from typing import TYPE_CHECKING
 from typing import cast
 
-from google.cloud import bigquery
-from google.cloud.exceptions import NotFound
-from humanize import naturalsize
-from humanize import precisedelta
-from loguru import logger
+from ._lazy_import import import_attr_cached
+from ._lazy_import import import_module_cached
+from ._lazy_logger import logger
 
-from . import cloudstorage
-from . import csv
-from . import dttm
-from . import settings
-from . import string
-from . import xlsx
+
+if TYPE_CHECKING:
+    from google.cloud import bigquery as bigquery_types
+
+
+@lru_cache(maxsize=1)
+def _humanize_naturalsize():
+    return import_attr_cached("humanize", "naturalsize")
+
+
+@lru_cache(maxsize=1)
+def _humanize_precisedelta():
+    return import_attr_cached("humanize", "precisedelta")
 
 
 PY_DATA_TYPE__BQ_DATA_TYPE = {
@@ -79,15 +88,19 @@ class Dtype:
 
 class BQ:
     def __init__(self, location: str | None = None, project_id: str = None):
-        if project_id is None and settings.envs.GCP_PROJECT_ID is None:
+        bigquery = import_module_cached("google.cloud.bigquery")
+
+        from .settings import envs
+
+        if project_id is None and envs.GCP_PROJECT_ID is None:
             logger.warning("Using ADC for BigQuery authentication")
 
         # if location is None and my_env.envs.GCP_REGION is None:
         #     raise ValueError('GCP region must be set in environment variables.')
 
         self.client = bigquery.Client(
-            project=project_id or settings.envs.GCP_PROJECT_ID,
-            location=location or settings.envs.GCP_REGION,
+            project=project_id or envs.GCP_PROJECT_ID,
+            location=location or envs.GCP_REGION,
         )
         logger.debug(f"BQ client open, project: {self.client.project}")
 
@@ -99,7 +112,9 @@ class BQ:
         parameters: dict = {},
         dry_run: bool = False,
         temporary_table: bool = False,
-    ) -> bigquery.QueryJob:
+    ) -> bigquery_types.QueryJob:
+        bigquery = import_module_cached("google.cloud.bigquery")
+
         # Reconstruct query, handle multiple queries in a single job
         is_multi = isinstance(query, list)
         queries = query if is_multi else [query]
@@ -154,18 +169,20 @@ class BQ:
             else None
         )
         query_job.result()  # Wait for the job to complete
-        elapsed = precisedelta(datetime.timedelta(seconds=time.time() - t))
+        elapsed = _humanize_precisedelta()(datetime.timedelta(seconds=time.time() - t))
 
         if not is_multi:
+            naturalsize = _humanize_naturalsize()
             logger.info(
                 f"[Job ID] {query_job.job_id}, [Processed] {naturalsize(query_job.total_bytes_processed)}, [Billed] {naturalsize(query_job.total_bytes_billed)}, [Affected] {query_job.num_dml_affected_rows or 0} row(s), [Elapsed] {elapsed}",
             )
         else:
             logger.info(f"[Job ID] {query_job.job_id} [Elapsed] {elapsed}")
 
-            jobs: list[bigquery.QueryJob] = list(
+            jobs: list[bigquery_types.QueryJob] = list(
                 self.client.list_jobs(parent_job=query_job.job_id)
             )
+            naturalsize = _humanize_naturalsize()
             [
                 logger.info(
                     f"[Script ID] {job.job_id}, [Processed] {naturalsize(job.total_bytes_processed)}, [Billed] {naturalsize(job.total_bytes_billed)}, [Affected] {job.num_dml_affected_rows or 0} row(s)",
@@ -395,6 +412,10 @@ class BQ:
         compression: DataFileCompression | None = None,
         load_strategy: LoadStrategy = LoadStrategy.APPEND,
     ):
+        from . import cloudstorage
+        from . import dttm
+        from . import string
+
         self.raise_for_invalid_table_fqn(dst_table_fqn)
 
         if compression == DataFileCompression.GZIP and not src_filepath.endswith(".gz"):
@@ -462,6 +483,10 @@ class BQ:
         query_parameters: dict = {},
         csv_row_limit: int | None = None,
     ) -> str | list[str]:
+        from . import cloudstorage
+        from . import csv
+        from . import dttm
+
         if not dst_filepath.endswith(".csv"):
             raise ValueError("Destination filename must ends with .csv")
 
@@ -605,6 +630,8 @@ class BQ:
     def download_xlsx(
         self, src_table_fqn: str, dst_filename: str, xlsx_row_limit: int = 950000
     ):
+        from . import xlsx
+
         if not dst_filename.endswith(".xlsx"):
             raise ValueError("Destination filename must ends with .xlsx!")
 
@@ -714,11 +741,13 @@ class BQ:
             raise ValueError(f"{name} is not a valid table FQN")
 
     def is_table_exists(self, table_fqn: str) -> bool:
+        not_found = import_attr_cached("google.cloud.exceptions", "NotFound")
+
         self.raise_for_invalid_table_fqn(table_fqn)
         try:
             self.client.get_table(table_fqn)
             return True
-        except NotFound:
+        except not_found:
             return False
 
     def close(self):

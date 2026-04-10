@@ -2,7 +2,7 @@ import gzip
 import os
 import shutil
 
-from loguru import logger
+from ._lazy_logger import logger
 
 
 def compress(src_file: str, keep: bool = False):

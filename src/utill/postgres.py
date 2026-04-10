@@ -1,14 +1,12 @@
+from __future__ import annotations
+
 import csv
 import json
 import os
 from textwrap import dedent
 
-import psycopg
-import psycopg.conninfo
-import psycopg.rows
-from loguru import logger
-
-from .settings import PG_FILENAME
+from ._lazy_import import import_module_cached
+from ._lazy_logger import logger
 from .string import generate_random_string
 from .tunnel import establish_tunnel
 
@@ -17,11 +15,20 @@ class PG:
     def __init__(
         self,
         connection=None,
-        config_source: str | dict = PG_FILENAME,
+        config_source: str | dict | None = None,
         autocommit: bool = True,
         application_name: str = "utill",
-        row_factory: psycopg.rows = psycopg.rows.tuple_row,
+        row_factory=None,
     ) -> None:
+        psycopg = import_module_cached("psycopg")
+
+        if config_source is None:
+            from .settings import PG_FILENAME
+
+            config_source = PG_FILENAME
+
+        row_factory = row_factory or psycopg.rows.tuple_row
+
         # Evaluate config source
         if isinstance(config_source, str):
             if not os.path.exists(config_source):
@@ -71,7 +78,8 @@ class PG:
     def __exit__(self, exc_type, exc_value, exc_tb):
         self.close()
 
-    def establish_connection(self, autocommit: bool, row_factory: psycopg.rows):
+    def establish_connection(self, autocommit: bool, row_factory):
+        psycopg = import_module_cached("psycopg")
         self.conn = psycopg.connect(self.dsn, autocommit=autocommit)
         self.cursor = self.conn.cursor(row_factory=row_factory)
         logger.debug(

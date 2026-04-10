@@ -1,7 +1,7 @@
 import socket
 
-from loguru import logger
-from sshtunnel import SSHTunnelForwarder
+from ._lazy_import import import_attr_cached
+from ._lazy_logger import logger
 
 
 LOCALHOST = "127.0.0.1"
@@ -24,7 +24,9 @@ def start_tunnel(
 ) -> int:
     local_port = local_port or _get_random_port()
 
-    tunnel = SSHTunnelForwarder(
+    sshtunnel_forwarder = import_attr_cached("sshtunnel", "SSHTunnelForwarder")
+
+    tunnel = sshtunnel_forwarder(
         (host, port),
         ssh_username=user,
         ssh_private_key=key,
@@ -57,7 +59,7 @@ def establish_tunnel(conf: dict, local_port: int = None) -> tuple:
 
     if using_tunnel:
         logger.debug(
-            f'🛣️  Tunnel established: {conf["host"]}:{conf["port"]} --> {conf["tunnel_username"]}@{conf["tunnel_host"]} --> {z[1]}:{z[2]}'
+            f"🛣️  Tunnel established: {conf['host']}:{conf['port']} --> {conf['tunnel_username']}@{conf['tunnel_host']} --> {z[1]}:{z[2]}"
         )
 
     return z

@@ -1,6 +1,6 @@
 import subprocess
 
-from loguru import logger
+from ._lazy_logger import logger
 
 
 def _cli(command: list[str], cwd: str | None = None, shell: bool = False):
