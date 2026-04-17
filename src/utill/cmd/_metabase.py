@@ -1,7 +1,9 @@
 def _jl_grant(emails: list[str], url: str, create_user_if_not_exists: bool = False):
-    from loguru import logger
+    import logging
 
     from ..metabase import MB
+
+    logger = logging.getLogger("utill")
 
     mb = MB()
     all_users_by_email = {user["email"]: user for user in mb.get_all_users(all=True)}

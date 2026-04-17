@@ -1,7 +1,9 @@
 def _init(mode: str):
-    from loguru import logger
+    import logging
 
     from ..settings import envs
+
+    logger = logging.getLogger("utill")
     from ..settings import init_mb_file
     from ..settings import init_pg_file
 
@@ -22,11 +24,12 @@ def _init(mode: str):
 
 def _list(module: str = None):
     import json
+    import logging
     import os
 
-    from loguru import logger
-
     from ..settings import MB_FILENAME
+
+    logger = logging.getLogger("utill")
     from ..settings import PG_FILENAME
     from ..settings import envs
     from ..string import mask

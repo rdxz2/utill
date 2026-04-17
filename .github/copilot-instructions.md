@@ -76,7 +76,6 @@ utill conf init metabase
 - Keep imports sorted (Ruff `I` rules are enabled)
 - Keep command wiring in `src/utill/cmd/utill.py`
 - Put command behavior in `src/utill/cmd/_*.py`
-- Use `loguru` for operational logs in service/CLI flows
 - Validate inputs early and raise clear exceptions (`ValueError` where appropriate)
 
 Ruff lint settings are defined in `pyproject.toml` (`F` and `I` checks).
