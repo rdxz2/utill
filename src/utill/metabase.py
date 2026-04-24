@@ -126,7 +126,7 @@ class MB:
 
     # endregion
 
-    # region Question / card
+    # region Question (Card)
 
     def get_question(self, id: int) -> dict:
         return self.http_request(HttpMethod.GET, f"api/card/{id}").json()
@@ -143,6 +143,13 @@ class MB:
             json={"dataset_query": dataset_query},
         )
         logger.debug(f"✅ Question {id} connection changed to {connection_id}")
+
+    def download_question_as_csv(self, id: int, file_path: str) -> None:
+        response = self.http_request(HttpMethod.POST, f"api/card/{id}/query/csv")
+        response.raise_for_status()
+        with open(file_path, "w", encoding="utf-8") as f:
+            f.write(response.text)
+        logger.debug(f"✅ Question {id} downloaded as CSV to {file_path}")
 
     def archive_question(self, id: int) -> None:
         self.http_request(HttpMethod.PUT, f"api/card/{id}", json={"archived": True})
