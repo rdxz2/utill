@@ -34,15 +34,21 @@ def _cli(command: list[str], cwd: str | None = None, shell: bool = False):
         raise subprocess.CalledProcessError(return_code, command)
 
 
-def shell(command: list[str], cwd: str | None = None, print_stdout: bool = True):
+def shell(command: list[str], cwd: str | None = None, print_stdout: bool = True) -> str:
     logger.info(f"Executing command: {' '.join(command)}")
+    output: list[str] = []
     for res in _cli(command, cwd, shell=True):
+        output.append(res)
         if print_stdout:
             logger.info(res.replace("\n", ""))
+    return "".join(output)
 
 
-def bash(command: list[str], cwd: str | None = None, print_stdout: bool = True):
+def bash(command: list[str], cwd: str | None = None, print_stdout: bool = True) -> str:
     logger.info(f"Executing command: {' '.join(command)}")
+    output: list[str] = []
     for res in _cli(command, cwd, shell=False):
+        output.append(res)
         if print_stdout:
             logger.info(res.replace("\n", ""))
+    return "".join(output)
